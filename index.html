@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bibelplan">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Mein Bibelleseplan</title>
+  <style>
+    :root {
+      --bg:#f6f7fb; --card:#fff; --text:#111827; --muted:#6b7280;
+      --line:#e5e7eb; --accent:#1e3a5f; --accent2:#315f85; --ok:#166534;
+      --soft:#eef3f8; --shadow:0 8px 30px rgba(15,23,42,.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#0b1220; --card:#111827; --text:#f8fafc; --muted:#94a3b8;
+        --line:#243043; --accent:#8ab4d7; --accent2:#b4d1e7; --ok:#86efac;
+        --soft:#182235; --shadow:none;
+      }
+    }
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+      line-height:1.42;
+    }
+    button,input { font:inherit; }
+    .app { max-width:760px; margin:0 auto; padding:env(safe-area-inset-top) 14px calc(28px + env(safe-area-inset-bottom)); }
+    header { padding:18px 4px 10px; }
+    h1 { margin:0; font-size:27px; letter-spacing:-.5px; }
+    .sub { margin-top:5px; color:var(--muted); font-size:14px; }
+    .tabs {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:12px 0 16px;
+      position:sticky; top:0; z-index:10; padding:8px 0; background:var(--bg);
+    }
+    .tab {
+      border:1px solid var(--line); background:var(--card); color:var(--text);
+      min-height:44px; border-radius:13px; font-weight:700; padding:8px 6px;
+    }
+    .tab.active { background:var(--accent); color:white; border-color:var(--accent); }
+    @media (prefers-color-scheme: dark) { .tab.active { color:#08111f; } }
+    .hero,.day,.summary {
+      background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow);
+    }
+    .hero { padding:17px; margin-bottom:14px; }
+    .summary { padding:14px; margin-bottom:12px; }
+    .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .metric strong { display:block; font-size:21px; }
+    .metric span { color:var(--muted); font-size:13px; }
+    .progress { height:9px; background:var(--soft); border-radius:999px; overflow:hidden; margin-top:11px; }
+    .progress > div { height:100%; background:var(--accent2); width:0; transition:width .2s ease; }
+    .section-title { font-size:17px; font-weight:800; margin:18px 3px 9px; }
+    .day { margin:9px 0; overflow:hidden; }
+    .day-head {
+      width:100%; border:0; background:transparent; color:inherit; text-align:left;
+      padding:14px 15px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .date { font-weight:800; }
+    .meta { color:var(--muted); font-size:12px; margin-top:2px; }
+    .badge { border-radius:999px; background:var(--soft); color:var(--muted); padding:5px 8px; font-size:12px; font-weight:700; white-space:nowrap; }
+    .badge.done { color:var(--ok); }
+    .day-body { padding:0 14px 14px; border-top:1px solid var(--line); }
+    .track { padding:13px 0 8px; border-bottom:1px solid var(--line); }
+    .track:last-of-type { border-bottom:0; }
+    .track-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+    .track-label { font-size:12px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:.4px; }
+    .track-summary { font-weight:750; margin-top:2px; }
+    .track-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .mini {
+      min-height:34px; border-radius:10px; padding:6px 9px; border:1px solid var(--line);
+      background:var(--soft); color:var(--text); font-size:12px; font-weight:750;
+    }
+    .chapter-grid {
+      display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:8px;
+    }
+    @media (min-width:560px) { .chapter-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    .chapter {
+      display:flex; align-items:center; gap:8px; min-height:44px;
+      padding:8px 9px; border:1px solid var(--line); border-radius:12px; background:var(--soft);
+    }
+    .chapter input {
+      width:23px; height:23px; margin:0; flex:0 0 auto;
+      appearance:none; -webkit-appearance:none;
+      border:2px solid var(--muted); border-radius:7px;
+      background:var(--card); display:grid; place-content:center;
+      transition:background .12s ease,border-color .12s ease,transform .12s ease;
+    }
+    .chapter input::after {
+      content:"✓"; font-size:17px; line-height:1; font-weight:1000;
+      color:#fff; transform:scale(0); transition:transform .12s ease;
+    }
+    .chapter input:checked {
+      background:#166534; border-color:#166534; transform:scale(1.04);
+    }
+    .chapter input:checked::after { transform:scale(1); }
+    .chapter.checked {
+      border-color:#166534;
+      background:rgba(22,101,52,.13);
+    }
+    .chapter.checked span { color:var(--ok); font-weight:800; }
+    @media (prefers-color-scheme: dark) {
+      .chapter input:checked { background:#22c55e; border-color:#22c55e; }
+      .chapter input:checked::after { color:#052e16; }
+      .chapter.checked { background:rgba(34,197,94,.18); border-color:#22c55e; }
+    }
+    .chapter span { font-size:14px; font-weight:650; min-width:0; }
+
+    .today-nav {
+      display:grid; grid-template-columns:48px minmax(0,1fr) 48px;
+      gap:8px; align-items:center; margin:0 0 12px;
+    }
+    .today-nav button {
+      min-height:48px; border:1px solid var(--line); border-radius:14px;
+      background:var(--card); color:var(--text); font-size:26px; font-weight:800;
+      box-shadow:var(--shadow);
+    }
+    .today-nav button:disabled { opacity:.35; }
+    .today-nav-center {
+      min-width:0; text-align:center; background:var(--card);
+      border:1px solid var(--line); border-radius:14px;
+      padding:9px 10px; box-shadow:var(--shadow);
+    }
+    .today-nav-center strong { display:block; font-size:15px; }
+    .today-nav-center span { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+    .today-reset {
+      width:100%; min-height:42px; margin:0 0 12px;
+      border:1px solid var(--line); border-radius:12px;
+      background:var(--soft); color:var(--accent2); font-weight:800;
+    }
+    .today-swipe { touch-action:pan-y; }
+
+    .cycle-panel {
+      background:var(--card); border:1px solid var(--line); border-radius:16px;
+      padding:13px 14px; margin-bottom:12px; box-shadow:var(--shadow);
+    }
+    .cycle-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+    .cycle-title { font-weight:850; }
+    .cycle-count { border-radius:999px; background:var(--soft); padding:5px 9px; font-size:12px; font-weight:800; color:var(--muted); white-space:nowrap; }
+    .cycle-list { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px; }
+    .cycle-pill { border:1px solid var(--line); border-radius:12px; padding:8px 6px; text-align:center; background:var(--soft); font-size:12px; font-weight:800; color:var(--muted); }
+    .cycle-pill.done { background:rgba(22,101,52,.13); border-color:#166534; color:var(--ok); }
+    .cycle-pill.current { border-color:var(--accent2); color:var(--accent2); }
+    .cycle-complete-note { margin-top:9px; font-size:13px; color:var(--ok); font-weight:800; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:13px; }
+    .small-btn {
+      min-height:42px; border-radius:12px; padding:9px 12px; border:1px solid var(--line);
+      background:var(--soft); color:var(--text); font-weight:750;
+    }
+    .primary { background:var(--accent); color:white; border-color:var(--accent); }
+    @media (prefers-color-scheme: dark) { .primary { color:#08111f; } }
+    .hidden { display:none !important; }
+    .empty { color:var(--muted); padding:16px 4px; }
+    .install {
+      margin-top:18px; padding:14px 15px; border:1px dashed var(--line); border-radius:16px; color:var(--muted); font-size:13px;
+    }
+    .install b { color:var(--text); }
+    .settings { display:flex; justify-content:flex-end; margin-top:8px; }
+    .offline-row { margin-top:9px; }
+    .offline-badge {
+      display:inline-flex; align-items:center; gap:7px;
+      min-height:30px; padding:5px 10px; border-radius:999px;
+      border:1px solid var(--line); background:var(--soft);
+      color:var(--muted); font-size:12px; font-weight:850;
+    }
+    .offline-badge::before {
+      content:""; width:8px; height:8px; border-radius:50%;
+      background:var(--muted); flex:0 0 auto;
+    }
+    .offline-badge.ready { color:var(--ok); border-color:rgba(22,101,52,.45); }
+    .offline-badge.ready::before { background:#16a34a; }
+    .offline-badge.offline {
+      color:var(--ok); border-color:rgba(22,101,52,.55);
+      background:rgba(22,101,52,.12);
+    }
+    .offline-badge.offline::before { background:#16a34a; }
+    .offline-badge.preparing::before { background:#b45309; }
+
+    .bible-overall {
+      background:var(--card); border:1px solid var(--line); border-radius:18px;
+      padding:15px; margin-bottom:14px; box-shadow:var(--shadow);
+    }
+    .bible-overall h2 { margin:0 0 5px; font-size:19px; }
+    .bible-overall .big-total {
+      font-size:28px; font-weight:900; letter-spacing:-.5px; margin:4px 0 2px;
+    }
+    .bible-stat-grid {
+      display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px; margin-top:12px;
+    }
+    .bible-stat {
+      background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:10px;
+    }
+    .bible-stat strong { display:block; font-size:16px; }
+    .bible-stat span { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+
+    .book-card {
+      background:var(--card); border:1px solid var(--line); border-radius:16px;
+      margin:8px 0; overflow:hidden; box-shadow:var(--shadow);
+    }
+    .book-head {
+      width:100%; border:0; background:transparent; color:var(--text);
+      min-height:54px; padding:12px 14px; text-align:left;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .book-name { font-size:16px; font-weight:850; }
+    .book-meta { color:var(--muted); font-size:12px; margin-top:2px; }
+    .book-arrow { font-size:20px; color:var(--muted); flex:0 0 auto; }
+    .book-body { border-top:1px solid var(--line); padding:12px; }
+
+    .bible-chapter-grid {
+      display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:7px;
+    }
+    @media (min-width:560px) {
+      .bible-chapter-grid { grid-template-columns:repeat(8,minmax(0,1fr)); }
+    }
+    .bible-chapter {
+      min-height:43px; border:1px solid var(--line); border-radius:11px;
+      background:var(--soft); display:flex; align-items:center; justify-content:center;
+      gap:5px; padding:5px;
+    }
+    .bible-chapter input,
+    .nt-master-check input {
+      width:21px; height:21px; margin:0; flex:0 0 auto;
+      appearance:none; -webkit-appearance:none;
+      border:2px solid var(--muted); border-radius:7px;
+      background:var(--card); display:grid; place-content:center;
+    }
+    .bible-chapter input::after,
+    .nt-master-check input::after {
+      content:"✓"; font-size:15px; line-height:1; font-weight:1000;
+      transform:scale(0); color:#fff;
+    }
+    .bible-chapter input:checked,
+    .nt-master-check input:checked {
+      background:#166534; border-color:#166534;
+    }
+    .bible-chapter input:checked::after,
+    .nt-master-check input:checked::after { transform:scale(1); }
+    .bible-chapter.checked {
+      border-color:#166534; background:rgba(22,101,52,.13);
+    }
+    .bible-chapter .num { font-size:13px; font-weight:850; }
+
+    .nt-master-head,
+    .nt-master-row {
+      display:grid; grid-template-columns:48px repeat(3,minmax(0,1fr));
+      gap:7px; align-items:center;
+    }
+    .nt-master-head {
+      color:var(--muted); font-size:11px; font-weight:850; padding:0 0 7px;
+    }
+    .nt-master-row { margin-bottom:7px; }
+    .nt-master-ch {
+      min-height:42px; border:1px solid var(--line); border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      background:var(--soft); font-weight:900;
+    }
+    .nt-master-check {
+      min-height:42px; border:1px solid var(--line); border-radius:10px;
+      display:flex; align-items:center; justify-content:center; background:var(--soft);
+    }
+    .nt-master-check.checked {
+      border-color:#166534; background:rgba(22,101,52,.13);
+    }
+    .testament-title { font-size:18px; font-weight:900; margin:20px 3px 9px; }
+    .linkbtn { border:0; background:none; color:var(--accent2); padding:8px 3px; font-weight:750; }
+    dialog {
+      width:min(92vw,520px); border:1px solid var(--line); border-radius:18px; background:var(--card); color:var(--text);
+      padding:18px; box-shadow:var(--shadow);
+    }
+    dialog::backdrop { background:rgba(0,0,0,.38); }
+    .danger { color:#b91c1c; }
+    .note { font-size:13px; color:var(--muted); }
+    .day-nav {
+      display:grid; grid-template-columns:44px minmax(0,1fr) 44px; gap:8px;
+      align-items:center; margin:0 0 12px;
+      background:var(--card); border:1px solid var(--line); border-radius:16px;
+      padding:10px; box-shadow:var(--shadow);
+    }
+    .day-nav button, .day-nav select {
+      min-height:44px; border:1px solid var(--line); border-radius:12px;
+      background:var(--soft); color:var(--text); font-weight:750;
+    }
+    .day-nav button { padding:8px; }
+    .day-nav select {
+      width:100%; min-width:0; padding:8px 34px 8px 11px; font-size:16px;
+    }
+    .day-nav .today-jump {
+      grid-column:1 / -1; background:transparent; color:var(--accent2);
+    }
+    .day-status {
+      display:inline-block; margin-left:6px; padding:2px 7px; border-radius:999px;
+      background:var(--soft); color:var(--muted); font-size:11px; font-weight:800;
+      vertical-align:1px;
+    }
+    .day-status.today { color:var(--accent2); }
+    .day-status.overdue { color:#b45309; }
+    .day-status.tomorrow { color:var(--ok); }
+    .day.flash { outline:2px solid var(--accent2); outline-offset:2px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Mein Bibelleseplan</h1>
+    <div class="sub">AT 90 · NT 30 × 3 · Kapitelzahlen geprüft · Start 11.09.2026</div>
+    <div class="offline-row">
+      <span class="offline-badge preparing" id="offlineStatus" aria-live="polite">
+        Offline wird vorbereitet…
+      </span>
+    </div>
+    <div class="settings"><button class="linkbtn" id="settingsBtn">Einstellungen</button></div>
+  </header>
+
+  <nav class="tabs" aria-label="Ansicht">
+    <button class="tab active" data-view="today">Heute</button>
+    <button class="tab" data-view="at">AT 90</button>
+    <button class="tab" data-view="nt">NT 30</button>
+    <button class="tab" data-view="bible">Bibel</button>
+  </nav>
+
+  <main id="content"></main>
+
+  <div class="install">
+    <b>Offline nutzbar:</b> Öffne die App nach diesem Update einmal mit Internet.
+    Sobald oben <b>„Offline verfügbar ✓“</b> steht, kannst du sie auch ohne Verbindung öffnen
+    und Kapitel abhaken. Die Häkchen werden lokal auf diesem Gerät gespeichert und bleiben
+    nach dem Wiederverbinden erhalten.
+  </div>
+</div>
+
+<dialog id="settingsDialog">
+  <h2 style="margin-top:0">Einstellungen</h2>
+  <p class="note">Der Fortschritt wird nur lokal in diesem Browser gespeichert.</p>
+  <button class="small-btn danger" id="resetBtn">Gesamten Fortschritt zurücksetzen</button>
+  <div style="height:10px"></div>
+  <button class="small-btn" id="closeSettings">Schließen</button>
+</dialog>
+
+<script>
+const PLAN = {"start":"2026-09-11","at":[{"day":1,"date":"2026-09-11","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 1–8","chapters":[{"book":"1. Mose","chapter":1,"label":"1. Mose 1"},{"book":"1. Mose","chapter":2,"label":"1. Mose 2"},{"book":"1. Mose","chapter":3,"label":"1. Mose 3"},{"book":"1. Mose","chapter":4,"label":"1. Mose 4"},{"book":"1. Mose","chapter":5,"label":"1. Mose 5"},{"book":"1. Mose","chapter":6,"label":"1. Mose 6"},{"book":"1. Mose","chapter":7,"label":"1. Mose 7"},{"book":"1. Mose","chapter":8,"label":"1. Mose 8"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 1–2","chapters":[{"book":"Psalm","chapter":1,"label":"Psalm 1"},{"book":"Psalm","chapter":2,"label":"Psalm 2"}]}]},{"day":2,"date":"2026-09-12","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 9–16","chapters":[{"book":"1. Mose","chapter":9,"label":"1. Mose 9"},{"book":"1. Mose","chapter":10,"label":"1. Mose 10"},{"book":"1. Mose","chapter":11,"label":"1. Mose 11"},{"book":"1. Mose","chapter":12,"label":"1. Mose 12"},{"book":"1. Mose","chapter":13,"label":"1. Mose 13"},{"book":"1. Mose","chapter":14,"label":"1. Mose 14"},{"book":"1. Mose","chapter":15,"label":"1. Mose 15"},{"book":"1. Mose","chapter":16,"label":"1. Mose 16"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 3–4","chapters":[{"book":"Psalm","chapter":3,"label":"Psalm 3"},{"book":"Psalm","chapter":4,"label":"Psalm 4"}]}]},{"day":3,"date":"2026-09-13","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 17–25","chapters":[{"book":"1. Mose","chapter":17,"label":"1. Mose 17"},{"book":"1. Mose","chapter":18,"label":"1. Mose 18"},{"book":"1. Mose","chapter":19,"label":"1. Mose 19"},{"book":"1. Mose","chapter":20,"label":"1. Mose 20"},{"book":"1. Mose","chapter":21,"label":"1. Mose 21"},{"book":"1. Mose","chapter":22,"label":"1. Mose 22"},{"book":"1. Mose","chapter":23,"label":"1. Mose 23"},{"book":"1. Mose","chapter":24,"label":"1. Mose 24"},{"book":"1. Mose","chapter":25,"label":"1. Mose 25"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 5–6","chapters":[{"book":"Psalm","chapter":5,"label":"Psalm 5"},{"book":"Psalm","chapter":6,"label":"Psalm 6"}]}]},{"day":4,"date":"2026-09-14","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 26–33","chapters":[{"book":"1. Mose","chapter":26,"label":"1. Mose 26"},{"book":"1. Mose","chapter":27,"label":"1. Mose 27"},{"book":"1. Mose","chapter":28,"label":"1. Mose 28"},{"book":"1. Mose","chapter":29,"label":"1. Mose 29"},{"book":"1. Mose","chapter":30,"label":"1. Mose 30"},{"book":"1. Mose","chapter":31,"label":"1. Mose 31"},{"book":"1. Mose","chapter":32,"label":"1. Mose 32"},{"book":"1. Mose","chapter":33,"label":"1. Mose 33"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 7–8","chapters":[{"book":"Psalm","chapter":7,"label":"Psalm 7"},{"book":"Psalm","chapter":8,"label":"Psalm 8"}]}]},{"day":5,"date":"2026-09-15","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 34–41","chapters":[{"book":"1. Mose","chapter":34,"label":"1. Mose 34"},{"book":"1. Mose","chapter":35,"label":"1. Mose 35"},{"book":"1. Mose","chapter":36,"label":"1. Mose 36"},{"book":"1. Mose","chapter":37,"label":"1. Mose 37"},{"book":"1. Mose","chapter":38,"label":"1. Mose 38"},{"book":"1. Mose","chapter":39,"label":"1. Mose 39"},{"book":"1. Mose","chapter":40,"label":"1. Mose 40"},{"book":"1. Mose","chapter":41,"label":"1. Mose 41"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 9–10","chapters":[{"book":"Psalm","chapter":9,"label":"Psalm 9"},{"book":"Psalm","chapter":10,"label":"Psalm 10"}]}]},{"day":6,"date":"2026-09-16","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 42–49","chapters":[{"book":"1. Mose","chapter":42,"label":"1. Mose 42"},{"book":"1. Mose","chapter":43,"label":"1. Mose 43"},{"book":"1. Mose","chapter":44,"label":"1. Mose 44"},{"book":"1. Mose","chapter":45,"label":"1. Mose 45"},{"book":"1. Mose","chapter":46,"label":"1. Mose 46"},{"book":"1. Mose","chapter":47,"label":"1. Mose 47"},{"book":"1. Mose","chapter":48,"label":"1. Mose 48"},{"book":"1. Mose","chapter":49,"label":"1. Mose 49"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 11–13","chapters":[{"book":"Psalm","chapter":11,"label":"Psalm 11"},{"book":"Psalm","chapter":12,"label":"Psalm 12"},{"book":"Psalm","chapter":13,"label":"Psalm 13"}]}]},{"day":7,"date":"2026-09-17","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Mose 50; 2. Mose 1–7","chapters":[{"book":"1. Mose","chapter":50,"label":"1. Mose 50"},{"book":"2. Mose","chapter":1,"label":"2. Mose 1"},{"book":"2. Mose","chapter":2,"label":"2. Mose 2"},{"book":"2. Mose","chapter":3,"label":"2. Mose 3"},{"book":"2. Mose","chapter":4,"label":"2. Mose 4"},{"book":"2. Mose","chapter":5,"label":"2. Mose 5"},{"book":"2. Mose","chapter":6,"label":"2. Mose 6"},{"book":"2. Mose","chapter":7,"label":"2. Mose 7"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 14–15","chapters":[{"book":"Psalm","chapter":14,"label":"Psalm 14"},{"book":"Psalm","chapter":15,"label":"Psalm 15"}]}]},{"day":8,"date":"2026-09-18","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Mose 8–15","chapters":[{"book":"2. Mose","chapter":8,"label":"2. Mose 8"},{"book":"2. Mose","chapter":9,"label":"2. Mose 9"},{"book":"2. Mose","chapter":10,"label":"2. Mose 10"},{"book":"2. Mose","chapter":11,"label":"2. Mose 11"},{"book":"2. Mose","chapter":12,"label":"2. Mose 12"},{"book":"2. Mose","chapter":13,"label":"2. Mose 13"},{"book":"2. Mose","chapter":14,"label":"2. Mose 14"},{"book":"2. Mose","chapter":15,"label":"2. Mose 15"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 16–17","chapters":[{"book":"Psalm","chapter":16,"label":"Psalm 16"},{"book":"Psalm","chapter":17,"label":"Psalm 17"}]}]},{"day":9,"date":"2026-09-19","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Mose 16–24","chapters":[{"book":"2. Mose","chapter":16,"label":"2. Mose 16"},{"book":"2. Mose","chapter":17,"label":"2. Mose 17"},{"book":"2. Mose","chapter":18,"label":"2. Mose 18"},{"book":"2. Mose","chapter":19,"label":"2. Mose 19"},{"book":"2. Mose","chapter":20,"label":"2. Mose 20"},{"book":"2. Mose","chapter":21,"label":"2. Mose 21"},{"book":"2. Mose","chapter":22,"label":"2. Mose 22"},{"book":"2. Mose","chapter":23,"label":"2. Mose 23"},{"book":"2. Mose","chapter":24,"label":"2. Mose 24"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 18–19","chapters":[{"book":"Psalm","chapter":18,"label":"Psalm 18"},{"book":"Psalm","chapter":19,"label":"Psalm 19"}]}]},{"day":10,"date":"2026-09-20","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Mose 25–32","chapters":[{"book":"2. Mose","chapter":25,"label":"2. Mose 25"},{"book":"2. Mose","chapter":26,"label":"2. Mose 26"},{"book":"2. Mose","chapter":27,"label":"2. Mose 27"},{"book":"2. Mose","chapter":28,"label":"2. Mose 28"},{"book":"2. Mose","chapter":29,"label":"2. Mose 29"},{"book":"2. Mose","chapter":30,"label":"2. Mose 30"},{"book":"2. Mose","chapter":31,"label":"2. Mose 31"},{"book":"2. Mose","chapter":32,"label":"2. Mose 32"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 20–21","chapters":[{"book":"Psalm","chapter":20,"label":"Psalm 20"},{"book":"Psalm","chapter":21,"label":"Psalm 21"}]}]},{"day":11,"date":"2026-09-21","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Mose 33–40","chapters":[{"book":"2. Mose","chapter":33,"label":"2. Mose 33"},{"book":"2. Mose","chapter":34,"label":"2. Mose 34"},{"book":"2. Mose","chapter":35,"label":"2. Mose 35"},{"book":"2. Mose","chapter":36,"label":"2. Mose 36"},{"book":"2. Mose","chapter":37,"label":"2. Mose 37"},{"book":"2. Mose","chapter":38,"label":"2. Mose 38"},{"book":"2. Mose","chapter":39,"label":"2. Mose 39"},{"book":"2. Mose","chapter":40,"label":"2. Mose 40"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 22–23","chapters":[{"book":"Psalm","chapter":22,"label":"Psalm 22"},{"book":"Psalm","chapter":23,"label":"Psalm 23"}]}]},{"day":12,"date":"2026-09-22","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"3. Mose 1–8","chapters":[{"book":"3. Mose","chapter":1,"label":"3. Mose 1"},{"book":"3. Mose","chapter":2,"label":"3. Mose 2"},{"book":"3. Mose","chapter":3,"label":"3. Mose 3"},{"book":"3. Mose","chapter":4,"label":"3. Mose 4"},{"book":"3. Mose","chapter":5,"label":"3. Mose 5"},{"book":"3. Mose","chapter":6,"label":"3. Mose 6"},{"book":"3. Mose","chapter":7,"label":"3. Mose 7"},{"book":"3. Mose","chapter":8,"label":"3. Mose 8"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 24–25","chapters":[{"book":"Psalm","chapter":24,"label":"Psalm 24"},{"book":"Psalm","chapter":25,"label":"Psalm 25"}]}]},{"day":13,"date":"2026-09-23","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"3. Mose 9–16","chapters":[{"book":"3. Mose","chapter":9,"label":"3. Mose 9"},{"book":"3. Mose","chapter":10,"label":"3. Mose 10"},{"book":"3. Mose","chapter":11,"label":"3. Mose 11"},{"book":"3. Mose","chapter":12,"label":"3. Mose 12"},{"book":"3. Mose","chapter":13,"label":"3. Mose 13"},{"book":"3. Mose","chapter":14,"label":"3. Mose 14"},{"book":"3. Mose","chapter":15,"label":"3. Mose 15"},{"book":"3. Mose","chapter":16,"label":"3. Mose 16"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 26–28","chapters":[{"book":"Psalm","chapter":26,"label":"Psalm 26"},{"book":"Psalm","chapter":27,"label":"Psalm 27"},{"book":"Psalm","chapter":28,"label":"Psalm 28"}]}]},{"day":14,"date":"2026-09-24","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"3. Mose 17–25","chapters":[{"book":"3. Mose","chapter":17,"label":"3. Mose 17"},{"book":"3. Mose","chapter":18,"label":"3. Mose 18"},{"book":"3. Mose","chapter":19,"label":"3. Mose 19"},{"book":"3. Mose","chapter":20,"label":"3. Mose 20"},{"book":"3. Mose","chapter":21,"label":"3. Mose 21"},{"book":"3. Mose","chapter":22,"label":"3. Mose 22"},{"book":"3. Mose","chapter":23,"label":"3. Mose 23"},{"book":"3. Mose","chapter":24,"label":"3. Mose 24"},{"book":"3. Mose","chapter":25,"label":"3. Mose 25"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 29–30","chapters":[{"book":"Psalm","chapter":29,"label":"Psalm 29"},{"book":"Psalm","chapter":30,"label":"Psalm 30"}]}]},{"day":15,"date":"2026-09-25","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"3. Mose 26–27; 4. Mose 1–6","chapters":[{"book":"3. Mose","chapter":26,"label":"3. Mose 26"},{"book":"3. Mose","chapter":27,"label":"3. Mose 27"},{"book":"4. Mose","chapter":1,"label":"4. Mose 1"},{"book":"4. Mose","chapter":2,"label":"4. Mose 2"},{"book":"4. Mose","chapter":3,"label":"4. Mose 3"},{"book":"4. Mose","chapter":4,"label":"4. Mose 4"},{"book":"4. Mose","chapter":5,"label":"4. Mose 5"},{"book":"4. Mose","chapter":6,"label":"4. Mose 6"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 31–32","chapters":[{"book":"Psalm","chapter":31,"label":"Psalm 31"},{"book":"Psalm","chapter":32,"label":"Psalm 32"}]}]},{"day":16,"date":"2026-09-26","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"4. Mose 7–14","chapters":[{"book":"4. Mose","chapter":7,"label":"4. Mose 7"},{"book":"4. Mose","chapter":8,"label":"4. Mose 8"},{"book":"4. Mose","chapter":9,"label":"4. Mose 9"},{"book":"4. Mose","chapter":10,"label":"4. Mose 10"},{"book":"4. Mose","chapter":11,"label":"4. Mose 11"},{"book":"4. Mose","chapter":12,"label":"4. Mose 12"},{"book":"4. Mose","chapter":13,"label":"4. Mose 13"},{"book":"4. Mose","chapter":14,"label":"4. Mose 14"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 33–34","chapters":[{"book":"Psalm","chapter":33,"label":"Psalm 33"},{"book":"Psalm","chapter":34,"label":"Psalm 34"}]}]},{"day":17,"date":"2026-09-27","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"4. Mose 15–22","chapters":[{"book":"4. Mose","chapter":15,"label":"4. Mose 15"},{"book":"4. Mose","chapter":16,"label":"4. Mose 16"},{"book":"4. Mose","chapter":17,"label":"4. Mose 17"},{"book":"4. Mose","chapter":18,"label":"4. Mose 18"},{"book":"4. Mose","chapter":19,"label":"4. Mose 19"},{"book":"4. Mose","chapter":20,"label":"4. Mose 20"},{"book":"4. Mose","chapter":21,"label":"4. Mose 21"},{"book":"4. Mose","chapter":22,"label":"4. Mose 22"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 35–36","chapters":[{"book":"Psalm","chapter":35,"label":"Psalm 35"},{"book":"Psalm","chapter":36,"label":"Psalm 36"}]}]},{"day":18,"date":"2026-09-28","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"4. Mose 23–30","chapters":[{"book":"4. Mose","chapter":23,"label":"4. Mose 23"},{"book":"4. Mose","chapter":24,"label":"4. Mose 24"},{"book":"4. Mose","chapter":25,"label":"4. Mose 25"},{"book":"4. Mose","chapter":26,"label":"4. Mose 26"},{"book":"4. Mose","chapter":27,"label":"4. Mose 27"},{"book":"4. Mose","chapter":28,"label":"4. Mose 28"},{"book":"4. Mose","chapter":29,"label":"4. Mose 29"},{"book":"4. Mose","chapter":30,"label":"4. Mose 30"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 37–38","chapters":[{"book":"Psalm","chapter":37,"label":"Psalm 37"},{"book":"Psalm","chapter":38,"label":"Psalm 38"}]}]},{"day":19,"date":"2026-09-29","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"4. Mose 31–36; 5. Mose 1–2","chapters":[{"book":"4. Mose","chapter":31,"label":"4. Mose 31"},{"book":"4. Mose","chapter":32,"label":"4. Mose 32"},{"book":"4. Mose","chapter":33,"label":"4. Mose 33"},{"book":"4. Mose","chapter":34,"label":"4. Mose 34"},{"book":"4. Mose","chapter":35,"label":"4. Mose 35"},{"book":"4. Mose","chapter":36,"label":"4. Mose 36"},{"book":"5. Mose","chapter":1,"label":"5. Mose 1"},{"book":"5. Mose","chapter":2,"label":"5. Mose 2"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 39–41","chapters":[{"book":"Psalm","chapter":39,"label":"Psalm 39"},{"book":"Psalm","chapter":40,"label":"Psalm 40"},{"book":"Psalm","chapter":41,"label":"Psalm 41"}]}]},{"day":20,"date":"2026-09-30","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"5. Mose 3–11","chapters":[{"book":"5. Mose","chapter":3,"label":"5. Mose 3"},{"book":"5. Mose","chapter":4,"label":"5. Mose 4"},{"book":"5. Mose","chapter":5,"label":"5. Mose 5"},{"book":"5. Mose","chapter":6,"label":"5. Mose 6"},{"book":"5. Mose","chapter":7,"label":"5. Mose 7"},{"book":"5. Mose","chapter":8,"label":"5. Mose 8"},{"book":"5. Mose","chapter":9,"label":"5. Mose 9"},{"book":"5. Mose","chapter":10,"label":"5. Mose 10"},{"book":"5. Mose","chapter":11,"label":"5. Mose 11"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 42–43","chapters":[{"book":"Psalm","chapter":42,"label":"Psalm 42"},{"book":"Psalm","chapter":43,"label":"Psalm 43"}]}]},{"day":21,"date":"2026-10-01","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"5. Mose 12–19","chapters":[{"book":"5. Mose","chapter":12,"label":"5. Mose 12"},{"book":"5. Mose","chapter":13,"label":"5. Mose 13"},{"book":"5. Mose","chapter":14,"label":"5. Mose 14"},{"book":"5. Mose","chapter":15,"label":"5. Mose 15"},{"book":"5. Mose","chapter":16,"label":"5. Mose 16"},{"book":"5. Mose","chapter":17,"label":"5. Mose 17"},{"book":"5. Mose","chapter":18,"label":"5. Mose 18"},{"book":"5. Mose","chapter":19,"label":"5. Mose 19"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 44–45","chapters":[{"book":"Psalm","chapter":44,"label":"Psalm 44"},{"book":"Psalm","chapter":45,"label":"Psalm 45"}]}]},{"day":22,"date":"2026-10-02","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"5. Mose 20–27","chapters":[{"book":"5. Mose","chapter":20,"label":"5. Mose 20"},{"book":"5. Mose","chapter":21,"label":"5. Mose 21"},{"book":"5. Mose","chapter":22,"label":"5. Mose 22"},{"book":"5. Mose","chapter":23,"label":"5. Mose 23"},{"book":"5. Mose","chapter":24,"label":"5. Mose 24"},{"book":"5. Mose","chapter":25,"label":"5. Mose 25"},{"book":"5. Mose","chapter":26,"label":"5. Mose 26"},{"book":"5. Mose","chapter":27,"label":"5. Mose 27"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 46–47","chapters":[{"book":"Psalm","chapter":46,"label":"Psalm 46"},{"book":"Psalm","chapter":47,"label":"Psalm 47"}]}]},{"day":23,"date":"2026-10-03","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"5. Mose 28–34; Josua 1","chapters":[{"book":"5. Mose","chapter":28,"label":"5. Mose 28"},{"book":"5. Mose","chapter":29,"label":"5. Mose 29"},{"book":"5. Mose","chapter":30,"label":"5. Mose 30"},{"book":"5. Mose","chapter":31,"label":"5. Mose 31"},{"book":"5. Mose","chapter":32,"label":"5. Mose 32"},{"book":"5. Mose","chapter":33,"label":"5. Mose 33"},{"book":"5. Mose","chapter":34,"label":"5. Mose 34"},{"book":"Josua","chapter":1,"label":"Josua 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 48–49","chapters":[{"book":"Psalm","chapter":48,"label":"Psalm 48"},{"book":"Psalm","chapter":49,"label":"Psalm 49"}]}]},{"day":24,"date":"2026-10-04","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Josua 2–9","chapters":[{"book":"Josua","chapter":2,"label":"Josua 2"},{"book":"Josua","chapter":3,"label":"Josua 3"},{"book":"Josua","chapter":4,"label":"Josua 4"},{"book":"Josua","chapter":5,"label":"Josua 5"},{"book":"Josua","chapter":6,"label":"Josua 6"},{"book":"Josua","chapter":7,"label":"Josua 7"},{"book":"Josua","chapter":8,"label":"Josua 8"},{"book":"Josua","chapter":9,"label":"Josua 9"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 50–51","chapters":[{"book":"Psalm","chapter":50,"label":"Psalm 50"},{"book":"Psalm","chapter":51,"label":"Psalm 51"}]}]},{"day":25,"date":"2026-10-05","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Josua 10–17","chapters":[{"book":"Josua","chapter":10,"label":"Josua 10"},{"book":"Josua","chapter":11,"label":"Josua 11"},{"book":"Josua","chapter":12,"label":"Josua 12"},{"book":"Josua","chapter":13,"label":"Josua 13"},{"book":"Josua","chapter":14,"label":"Josua 14"},{"book":"Josua","chapter":15,"label":"Josua 15"},{"book":"Josua","chapter":16,"label":"Josua 16"},{"book":"Josua","chapter":17,"label":"Josua 17"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 52–54","chapters":[{"book":"Psalm","chapter":52,"label":"Psalm 52"},{"book":"Psalm","chapter":53,"label":"Psalm 53"},{"book":"Psalm","chapter":54,"label":"Psalm 54"}]}]},{"day":26,"date":"2026-10-06","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Josua 18–24; Richter 1–2","chapters":[{"book":"Josua","chapter":18,"label":"Josua 18"},{"book":"Josua","chapter":19,"label":"Josua 19"},{"book":"Josua","chapter":20,"label":"Josua 20"},{"book":"Josua","chapter":21,"label":"Josua 21"},{"book":"Josua","chapter":22,"label":"Josua 22"},{"book":"Josua","chapter":23,"label":"Josua 23"},{"book":"Josua","chapter":24,"label":"Josua 24"},{"book":"Richter","chapter":1,"label":"Richter 1"},{"book":"Richter","chapter":2,"label":"Richter 2"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 55–56","chapters":[{"book":"Psalm","chapter":55,"label":"Psalm 55"},{"book":"Psalm","chapter":56,"label":"Psalm 56"}]}]},{"day":27,"date":"2026-10-07","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Richter 3–10","chapters":[{"book":"Richter","chapter":3,"label":"Richter 3"},{"book":"Richter","chapter":4,"label":"Richter 4"},{"book":"Richter","chapter":5,"label":"Richter 5"},{"book":"Richter","chapter":6,"label":"Richter 6"},{"book":"Richter","chapter":7,"label":"Richter 7"},{"book":"Richter","chapter":8,"label":"Richter 8"},{"book":"Richter","chapter":9,"label":"Richter 9"},{"book":"Richter","chapter":10,"label":"Richter 10"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 57–58","chapters":[{"book":"Psalm","chapter":57,"label":"Psalm 57"},{"book":"Psalm","chapter":58,"label":"Psalm 58"}]}]},{"day":28,"date":"2026-10-08","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Richter 11–18","chapters":[{"book":"Richter","chapter":11,"label":"Richter 11"},{"book":"Richter","chapter":12,"label":"Richter 12"},{"book":"Richter","chapter":13,"label":"Richter 13"},{"book":"Richter","chapter":14,"label":"Richter 14"},{"book":"Richter","chapter":15,"label":"Richter 15"},{"book":"Richter","chapter":16,"label":"Richter 16"},{"book":"Richter","chapter":17,"label":"Richter 17"},{"book":"Richter","chapter":18,"label":"Richter 18"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 59–60","chapters":[{"book":"Psalm","chapter":59,"label":"Psalm 59"},{"book":"Psalm","chapter":60,"label":"Psalm 60"}]}]},{"day":29,"date":"2026-10-09","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Richter 19–21; Rut 1–4; 1. Samuel 1","chapters":[{"book":"Richter","chapter":19,"label":"Richter 19"},{"book":"Richter","chapter":20,"label":"Richter 20"},{"book":"Richter","chapter":21,"label":"Richter 21"},{"book":"Rut","chapter":1,"label":"Rut 1"},{"book":"Rut","chapter":2,"label":"Rut 2"},{"book":"Rut","chapter":3,"label":"Rut 3"},{"book":"Rut","chapter":4,"label":"Rut 4"},{"book":"1. Samuel","chapter":1,"label":"1. Samuel 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 61–62","chapters":[{"book":"Psalm","chapter":61,"label":"Psalm 61"},{"book":"Psalm","chapter":62,"label":"Psalm 62"}]}]},{"day":30,"date":"2026-10-10","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Samuel 2–9","chapters":[{"book":"1. Samuel","chapter":2,"label":"1. Samuel 2"},{"book":"1. Samuel","chapter":3,"label":"1. Samuel 3"},{"book":"1. Samuel","chapter":4,"label":"1. Samuel 4"},{"book":"1. Samuel","chapter":5,"label":"1. Samuel 5"},{"book":"1. Samuel","chapter":6,"label":"1. Samuel 6"},{"book":"1. Samuel","chapter":7,"label":"1. Samuel 7"},{"book":"1. Samuel","chapter":8,"label":"1. Samuel 8"},{"book":"1. Samuel","chapter":9,"label":"1. Samuel 9"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 63–64","chapters":[{"book":"Psalm","chapter":63,"label":"Psalm 63"},{"book":"Psalm","chapter":64,"label":"Psalm 64"}]}]},{"day":31,"date":"2026-10-11","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Samuel 10–17","chapters":[{"book":"1. Samuel","chapter":10,"label":"1. Samuel 10"},{"book":"1. Samuel","chapter":11,"label":"1. Samuel 11"},{"book":"1. Samuel","chapter":12,"label":"1. Samuel 12"},{"book":"1. Samuel","chapter":13,"label":"1. Samuel 13"},{"book":"1. Samuel","chapter":14,"label":"1. Samuel 14"},{"book":"1. Samuel","chapter":15,"label":"1. Samuel 15"},{"book":"1. Samuel","chapter":16,"label":"1. Samuel 16"},{"book":"1. Samuel","chapter":17,"label":"1. Samuel 17"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 65–67","chapters":[{"book":"Psalm","chapter":65,"label":"Psalm 65"},{"book":"Psalm","chapter":66,"label":"Psalm 66"},{"book":"Psalm","chapter":67,"label":"Psalm 67"}]}]},{"day":32,"date":"2026-10-12","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Samuel 18–26","chapters":[{"book":"1. Samuel","chapter":18,"label":"1. Samuel 18"},{"book":"1. Samuel","chapter":19,"label":"1. Samuel 19"},{"book":"1. Samuel","chapter":20,"label":"1. Samuel 20"},{"book":"1. Samuel","chapter":21,"label":"1. Samuel 21"},{"book":"1. Samuel","chapter":22,"label":"1. Samuel 22"},{"book":"1. Samuel","chapter":23,"label":"1. Samuel 23"},{"book":"1. Samuel","chapter":24,"label":"1. Samuel 24"},{"book":"1. Samuel","chapter":25,"label":"1. Samuel 25"},{"book":"1. Samuel","chapter":26,"label":"1. Samuel 26"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 68–69","chapters":[{"book":"Psalm","chapter":68,"label":"Psalm 68"},{"book":"Psalm","chapter":69,"label":"Psalm 69"}]}]},{"day":33,"date":"2026-10-13","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Samuel 27–31; 2. Samuel 1–3","chapters":[{"book":"1. Samuel","chapter":27,"label":"1. Samuel 27"},{"book":"1. Samuel","chapter":28,"label":"1. Samuel 28"},{"book":"1. Samuel","chapter":29,"label":"1. Samuel 29"},{"book":"1. Samuel","chapter":30,"label":"1. Samuel 30"},{"book":"1. Samuel","chapter":31,"label":"1. Samuel 31"},{"book":"2. Samuel","chapter":1,"label":"2. Samuel 1"},{"book":"2. Samuel","chapter":2,"label":"2. Samuel 2"},{"book":"2. Samuel","chapter":3,"label":"2. Samuel 3"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 70–71","chapters":[{"book":"Psalm","chapter":70,"label":"Psalm 70"},{"book":"Psalm","chapter":71,"label":"Psalm 71"}]}]},{"day":34,"date":"2026-10-14","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Samuel 4–11","chapters":[{"book":"2. Samuel","chapter":4,"label":"2. Samuel 4"},{"book":"2. Samuel","chapter":5,"label":"2. Samuel 5"},{"book":"2. Samuel","chapter":6,"label":"2. Samuel 6"},{"book":"2. Samuel","chapter":7,"label":"2. Samuel 7"},{"book":"2. Samuel","chapter":8,"label":"2. Samuel 8"},{"book":"2. Samuel","chapter":9,"label":"2. Samuel 9"},{"book":"2. Samuel","chapter":10,"label":"2. Samuel 10"},{"book":"2. Samuel","chapter":11,"label":"2. Samuel 11"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 72–73","chapters":[{"book":"Psalm","chapter":72,"label":"Psalm 72"},{"book":"Psalm","chapter":73,"label":"Psalm 73"}]}]},{"day":35,"date":"2026-10-15","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Samuel 12–19","chapters":[{"book":"2. Samuel","chapter":12,"label":"2. Samuel 12"},{"book":"2. Samuel","chapter":13,"label":"2. Samuel 13"},{"book":"2. Samuel","chapter":14,"label":"2. Samuel 14"},{"book":"2. Samuel","chapter":15,"label":"2. Samuel 15"},{"book":"2. Samuel","chapter":16,"label":"2. Samuel 16"},{"book":"2. Samuel","chapter":17,"label":"2. Samuel 17"},{"book":"2. Samuel","chapter":18,"label":"2. Samuel 18"},{"book":"2. Samuel","chapter":19,"label":"2. Samuel 19"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 74–75","chapters":[{"book":"Psalm","chapter":74,"label":"Psalm 74"},{"book":"Psalm","chapter":75,"label":"Psalm 75"}]}]},{"day":36,"date":"2026-10-16","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Samuel 20–24; 1. Könige 1–3","chapters":[{"book":"2. Samuel","chapter":20,"label":"2. Samuel 20"},{"book":"2. Samuel","chapter":21,"label":"2. Samuel 21"},{"book":"2. Samuel","chapter":22,"label":"2. Samuel 22"},{"book":"2. Samuel","chapter":23,"label":"2. Samuel 23"},{"book":"2. Samuel","chapter":24,"label":"2. Samuel 24"},{"book":"1. Könige","chapter":1,"label":"1. Könige 1"},{"book":"1. Könige","chapter":2,"label":"1. Könige 2"},{"book":"1. Könige","chapter":3,"label":"1. Könige 3"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 76–77","chapters":[{"book":"Psalm","chapter":76,"label":"Psalm 76"},{"book":"Psalm","chapter":77,"label":"Psalm 77"}]}]},{"day":37,"date":"2026-10-17","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Könige 4–12","chapters":[{"book":"1. Könige","chapter":4,"label":"1. Könige 4"},{"book":"1. Könige","chapter":5,"label":"1. Könige 5"},{"book":"1. Könige","chapter":6,"label":"1. Könige 6"},{"book":"1. Könige","chapter":7,"label":"1. Könige 7"},{"book":"1. Könige","chapter":8,"label":"1. Könige 8"},{"book":"1. Könige","chapter":9,"label":"1. Könige 9"},{"book":"1. Könige","chapter":10,"label":"1. Könige 10"},{"book":"1. Könige","chapter":11,"label":"1. Könige 11"},{"book":"1. Könige","chapter":12,"label":"1. Könige 12"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 78–79","chapters":[{"book":"Psalm","chapter":78,"label":"Psalm 78"},{"book":"Psalm","chapter":79,"label":"Psalm 79"}]}]},{"day":38,"date":"2026-10-18","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Könige 13–20","chapters":[{"book":"1. Könige","chapter":13,"label":"1. Könige 13"},{"book":"1. Könige","chapter":14,"label":"1. Könige 14"},{"book":"1. Könige","chapter":15,"label":"1. Könige 15"},{"book":"1. Könige","chapter":16,"label":"1. Könige 16"},{"book":"1. Könige","chapter":17,"label":"1. Könige 17"},{"book":"1. Könige","chapter":18,"label":"1. Könige 18"},{"book":"1. Könige","chapter":19,"label":"1. Könige 19"},{"book":"1. Könige","chapter":20,"label":"1. Könige 20"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 80–82","chapters":[{"book":"Psalm","chapter":80,"label":"Psalm 80"},{"book":"Psalm","chapter":81,"label":"Psalm 81"},{"book":"Psalm","chapter":82,"label":"Psalm 82"}]}]},{"day":39,"date":"2026-10-19","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Könige 21–22; 2. Könige 1–6","chapters":[{"book":"1. Könige","chapter":21,"label":"1. Könige 21"},{"book":"1. Könige","chapter":22,"label":"1. Könige 22"},{"book":"2. Könige","chapter":1,"label":"2. Könige 1"},{"book":"2. Könige","chapter":2,"label":"2. Könige 2"},{"book":"2. Könige","chapter":3,"label":"2. Könige 3"},{"book":"2. Könige","chapter":4,"label":"2. Könige 4"},{"book":"2. Könige","chapter":5,"label":"2. Könige 5"},{"book":"2. Könige","chapter":6,"label":"2. Könige 6"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 83–84","chapters":[{"book":"Psalm","chapter":83,"label":"Psalm 83"},{"book":"Psalm","chapter":84,"label":"Psalm 84"}]}]},{"day":40,"date":"2026-10-20","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Könige 7–14","chapters":[{"book":"2. Könige","chapter":7,"label":"2. Könige 7"},{"book":"2. Könige","chapter":8,"label":"2. Könige 8"},{"book":"2. Könige","chapter":9,"label":"2. Könige 9"},{"book":"2. Könige","chapter":10,"label":"2. Könige 10"},{"book":"2. Könige","chapter":11,"label":"2. Könige 11"},{"book":"2. Könige","chapter":12,"label":"2. Könige 12"},{"book":"2. Könige","chapter":13,"label":"2. Könige 13"},{"book":"2. Könige","chapter":14,"label":"2. Könige 14"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 85–86","chapters":[{"book":"Psalm","chapter":85,"label":"Psalm 85"},{"book":"Psalm","chapter":86,"label":"Psalm 86"}]}]},{"day":41,"date":"2026-10-21","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Könige 15–22","chapters":[{"book":"2. Könige","chapter":15,"label":"2. Könige 15"},{"book":"2. Könige","chapter":16,"label":"2. Könige 16"},{"book":"2. Könige","chapter":17,"label":"2. Könige 17"},{"book":"2. Könige","chapter":18,"label":"2. Könige 18"},{"book":"2. Könige","chapter":19,"label":"2. Könige 19"},{"book":"2. Könige","chapter":20,"label":"2. Könige 20"},{"book":"2. Könige","chapter":21,"label":"2. Könige 21"},{"book":"2. Könige","chapter":22,"label":"2. Könige 22"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 87–88","chapters":[{"book":"Psalm","chapter":87,"label":"Psalm 87"},{"book":"Psalm","chapter":88,"label":"Psalm 88"}]}]},{"day":42,"date":"2026-10-22","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Könige 23–25; 1. Chronik 1–5","chapters":[{"book":"2. Könige","chapter":23,"label":"2. Könige 23"},{"book":"2. Könige","chapter":24,"label":"2. Könige 24"},{"book":"2. Könige","chapter":25,"label":"2. Könige 25"},{"book":"1. Chronik","chapter":1,"label":"1. Chronik 1"},{"book":"1. Chronik","chapter":2,"label":"1. Chronik 2"},{"book":"1. Chronik","chapter":3,"label":"1. Chronik 3"},{"book":"1. Chronik","chapter":4,"label":"1. Chronik 4"},{"book":"1. Chronik","chapter":5,"label":"1. Chronik 5"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 89–90","chapters":[{"book":"Psalm","chapter":89,"label":"Psalm 89"},{"book":"Psalm","chapter":90,"label":"Psalm 90"}]}]},{"day":43,"date":"2026-10-23","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Chronik 6–14","chapters":[{"book":"1. Chronik","chapter":6,"label":"1. Chronik 6"},{"book":"1. Chronik","chapter":7,"label":"1. Chronik 7"},{"book":"1. Chronik","chapter":8,"label":"1. Chronik 8"},{"book":"1. Chronik","chapter":9,"label":"1. Chronik 9"},{"book":"1. Chronik","chapter":10,"label":"1. Chronik 10"},{"book":"1. Chronik","chapter":11,"label":"1. Chronik 11"},{"book":"1. Chronik","chapter":12,"label":"1. Chronik 12"},{"book":"1. Chronik","chapter":13,"label":"1. Chronik 13"},{"book":"1. Chronik","chapter":14,"label":"1. Chronik 14"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 91–92","chapters":[{"book":"Psalm","chapter":91,"label":"Psalm 91"},{"book":"Psalm","chapter":92,"label":"Psalm 92"}]}]},{"day":44,"date":"2026-10-24","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Chronik 15–22","chapters":[{"book":"1. Chronik","chapter":15,"label":"1. Chronik 15"},{"book":"1. Chronik","chapter":16,"label":"1. Chronik 16"},{"book":"1. Chronik","chapter":17,"label":"1. Chronik 17"},{"book":"1. Chronik","chapter":18,"label":"1. Chronik 18"},{"book":"1. Chronik","chapter":19,"label":"1. Chronik 19"},{"book":"1. Chronik","chapter":20,"label":"1. Chronik 20"},{"book":"1. Chronik","chapter":21,"label":"1. Chronik 21"},{"book":"1. Chronik","chapter":22,"label":"1. Chronik 22"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 93–94","chapters":[{"book":"Psalm","chapter":93,"label":"Psalm 93"},{"book":"Psalm","chapter":94,"label":"Psalm 94"}]}]},{"day":45,"date":"2026-10-25","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"1. Chronik 23–29; 2. Chronik 1","chapters":[{"book":"1. Chronik","chapter":23,"label":"1. Chronik 23"},{"book":"1. Chronik","chapter":24,"label":"1. Chronik 24"},{"book":"1. Chronik","chapter":25,"label":"1. Chronik 25"},{"book":"1. Chronik","chapter":26,"label":"1. Chronik 26"},{"book":"1. Chronik","chapter":27,"label":"1. Chronik 27"},{"book":"1. Chronik","chapter":28,"label":"1. Chronik 28"},{"book":"1. Chronik","chapter":29,"label":"1. Chronik 29"},{"book":"2. Chronik","chapter":1,"label":"2. Chronik 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 95–97","chapters":[{"book":"Psalm","chapter":95,"label":"Psalm 95"},{"book":"Psalm","chapter":96,"label":"Psalm 96"},{"book":"Psalm","chapter":97,"label":"Psalm 97"}]}]},{"day":46,"date":"2026-10-26","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Chronik 2–9","chapters":[{"book":"2. Chronik","chapter":2,"label":"2. Chronik 2"},{"book":"2. Chronik","chapter":3,"label":"2. Chronik 3"},{"book":"2. Chronik","chapter":4,"label":"2. Chronik 4"},{"book":"2. Chronik","chapter":5,"label":"2. Chronik 5"},{"book":"2. Chronik","chapter":6,"label":"2. Chronik 6"},{"book":"2. Chronik","chapter":7,"label":"2. Chronik 7"},{"book":"2. Chronik","chapter":8,"label":"2. Chronik 8"},{"book":"2. Chronik","chapter":9,"label":"2. Chronik 9"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 98–99","chapters":[{"book":"Psalm","chapter":98,"label":"Psalm 98"},{"book":"Psalm","chapter":99,"label":"Psalm 99"}]}]},{"day":47,"date":"2026-10-27","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Chronik 10–17","chapters":[{"book":"2. Chronik","chapter":10,"label":"2. Chronik 10"},{"book":"2. Chronik","chapter":11,"label":"2. Chronik 11"},{"book":"2. Chronik","chapter":12,"label":"2. Chronik 12"},{"book":"2. Chronik","chapter":13,"label":"2. Chronik 13"},{"book":"2. Chronik","chapter":14,"label":"2. Chronik 14"},{"book":"2. Chronik","chapter":15,"label":"2. Chronik 15"},{"book":"2. Chronik","chapter":16,"label":"2. Chronik 16"},{"book":"2. Chronik","chapter":17,"label":"2. Chronik 17"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 100–101","chapters":[{"book":"Psalm","chapter":100,"label":"Psalm 100"},{"book":"Psalm","chapter":101,"label":"Psalm 101"}]}]},{"day":48,"date":"2026-10-28","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Chronik 18–25","chapters":[{"book":"2. Chronik","chapter":18,"label":"2. Chronik 18"},{"book":"2. Chronik","chapter":19,"label":"2. Chronik 19"},{"book":"2. Chronik","chapter":20,"label":"2. Chronik 20"},{"book":"2. Chronik","chapter":21,"label":"2. Chronik 21"},{"book":"2. Chronik","chapter":22,"label":"2. Chronik 22"},{"book":"2. Chronik","chapter":23,"label":"2. Chronik 23"},{"book":"2. Chronik","chapter":24,"label":"2. Chronik 24"},{"book":"2. Chronik","chapter":25,"label":"2. Chronik 25"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 102–103","chapters":[{"book":"Psalm","chapter":102,"label":"Psalm 102"},{"book":"Psalm","chapter":103,"label":"Psalm 103"}]}]},{"day":49,"date":"2026-10-29","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Chronik 26–34","chapters":[{"book":"2. Chronik","chapter":26,"label":"2. Chronik 26"},{"book":"2. Chronik","chapter":27,"label":"2. Chronik 27"},{"book":"2. Chronik","chapter":28,"label":"2. Chronik 28"},{"book":"2. Chronik","chapter":29,"label":"2. Chronik 29"},{"book":"2. Chronik","chapter":30,"label":"2. Chronik 30"},{"book":"2. Chronik","chapter":31,"label":"2. Chronik 31"},{"book":"2. Chronik","chapter":32,"label":"2. Chronik 32"},{"book":"2. Chronik","chapter":33,"label":"2. Chronik 33"},{"book":"2. Chronik","chapter":34,"label":"2. Chronik 34"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 104–105","chapters":[{"book":"Psalm","chapter":104,"label":"Psalm 104"},{"book":"Psalm","chapter":105,"label":"Psalm 105"}]}]},{"day":50,"date":"2026-10-30","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"2. Chronik 35–36; Esra 1–6","chapters":[{"book":"2. Chronik","chapter":35,"label":"2. Chronik 35"},{"book":"2. Chronik","chapter":36,"label":"2. Chronik 36"},{"book":"Esra","chapter":1,"label":"Esra 1"},{"book":"Esra","chapter":2,"label":"Esra 2"},{"book":"Esra","chapter":3,"label":"Esra 3"},{"book":"Esra","chapter":4,"label":"Esra 4"},{"book":"Esra","chapter":5,"label":"Esra 5"},{"book":"Esra","chapter":6,"label":"Esra 6"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 106–107","chapters":[{"book":"Psalm","chapter":106,"label":"Psalm 106"},{"book":"Psalm","chapter":107,"label":"Psalm 107"}]}]},{"day":51,"date":"2026-10-31","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Esra 7–10; Nehemia 1–4","chapters":[{"book":"Esra","chapter":7,"label":"Esra 7"},{"book":"Esra","chapter":8,"label":"Esra 8"},{"book":"Esra","chapter":9,"label":"Esra 9"},{"book":"Esra","chapter":10,"label":"Esra 10"},{"book":"Nehemia","chapter":1,"label":"Nehemia 1"},{"book":"Nehemia","chapter":2,"label":"Nehemia 2"},{"book":"Nehemia","chapter":3,"label":"Nehemia 3"},{"book":"Nehemia","chapter":4,"label":"Nehemia 4"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 108–109","chapters":[{"book":"Psalm","chapter":108,"label":"Psalm 108"},{"book":"Psalm","chapter":109,"label":"Psalm 109"}]}]},{"day":52,"date":"2026-11-01","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Nehemia 5–12","chapters":[{"book":"Nehemia","chapter":5,"label":"Nehemia 5"},{"book":"Nehemia","chapter":6,"label":"Nehemia 6"},{"book":"Nehemia","chapter":7,"label":"Nehemia 7"},{"book":"Nehemia","chapter":8,"label":"Nehemia 8"},{"book":"Nehemia","chapter":9,"label":"Nehemia 9"},{"book":"Nehemia","chapter":10,"label":"Nehemia 10"},{"book":"Nehemia","chapter":11,"label":"Nehemia 11"},{"book":"Nehemia","chapter":12,"label":"Nehemia 12"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 110–112","chapters":[{"book":"Psalm","chapter":110,"label":"Psalm 110"},{"book":"Psalm","chapter":111,"label":"Psalm 111"},{"book":"Psalm","chapter":112,"label":"Psalm 112"}]}]},{"day":53,"date":"2026-11-02","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Nehemia 13; Ester 1–7","chapters":[{"book":"Nehemia","chapter":13,"label":"Nehemia 13"},{"book":"Ester","chapter":1,"label":"Ester 1"},{"book":"Ester","chapter":2,"label":"Ester 2"},{"book":"Ester","chapter":3,"label":"Ester 3"},{"book":"Ester","chapter":4,"label":"Ester 4"},{"book":"Ester","chapter":5,"label":"Ester 5"},{"book":"Ester","chapter":6,"label":"Ester 6"},{"book":"Ester","chapter":7,"label":"Ester 7"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 113–114","chapters":[{"book":"Psalm","chapter":113,"label":"Psalm 113"},{"book":"Psalm","chapter":114,"label":"Psalm 114"}]}]},{"day":54,"date":"2026-11-03","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Ester 8–10; Hiob 1–6","chapters":[{"book":"Ester","chapter":8,"label":"Ester 8"},{"book":"Ester","chapter":9,"label":"Ester 9"},{"book":"Ester","chapter":10,"label":"Ester 10"},{"book":"Hiob","chapter":1,"label":"Hiob 1"},{"book":"Hiob","chapter":2,"label":"Hiob 2"},{"book":"Hiob","chapter":3,"label":"Hiob 3"},{"book":"Hiob","chapter":4,"label":"Hiob 4"},{"book":"Hiob","chapter":5,"label":"Hiob 5"},{"book":"Hiob","chapter":6,"label":"Hiob 6"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 115–116","chapters":[{"book":"Psalm","chapter":115,"label":"Psalm 115"},{"book":"Psalm","chapter":116,"label":"Psalm 116"}]}]},{"day":55,"date":"2026-11-04","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hiob 7–14","chapters":[{"book":"Hiob","chapter":7,"label":"Hiob 7"},{"book":"Hiob","chapter":8,"label":"Hiob 8"},{"book":"Hiob","chapter":9,"label":"Hiob 9"},{"book":"Hiob","chapter":10,"label":"Hiob 10"},{"book":"Hiob","chapter":11,"label":"Hiob 11"},{"book":"Hiob","chapter":12,"label":"Hiob 12"},{"book":"Hiob","chapter":13,"label":"Hiob 13"},{"book":"Hiob","chapter":14,"label":"Hiob 14"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 117–118","chapters":[{"book":"Psalm","chapter":117,"label":"Psalm 117"},{"book":"Psalm","chapter":118,"label":"Psalm 118"}]}]},{"day":56,"date":"2026-11-05","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hiob 15–22","chapters":[{"book":"Hiob","chapter":15,"label":"Hiob 15"},{"book":"Hiob","chapter":16,"label":"Hiob 16"},{"book":"Hiob","chapter":17,"label":"Hiob 17"},{"book":"Hiob","chapter":18,"label":"Hiob 18"},{"book":"Hiob","chapter":19,"label":"Hiob 19"},{"book":"Hiob","chapter":20,"label":"Hiob 20"},{"book":"Hiob","chapter":21,"label":"Hiob 21"},{"book":"Hiob","chapter":22,"label":"Hiob 22"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 119–120","chapters":[{"book":"Psalm","chapter":119,"label":"Psalm 119"},{"book":"Psalm","chapter":120,"label":"Psalm 120"}]}]},{"day":57,"date":"2026-11-06","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hiob 23–30","chapters":[{"book":"Hiob","chapter":23,"label":"Hiob 23"},{"book":"Hiob","chapter":24,"label":"Hiob 24"},{"book":"Hiob","chapter":25,"label":"Hiob 25"},{"book":"Hiob","chapter":26,"label":"Hiob 26"},{"book":"Hiob","chapter":27,"label":"Hiob 27"},{"book":"Hiob","chapter":28,"label":"Hiob 28"},{"book":"Hiob","chapter":29,"label":"Hiob 29"},{"book":"Hiob","chapter":30,"label":"Hiob 30"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 121–122","chapters":[{"book":"Psalm","chapter":121,"label":"Psalm 121"},{"book":"Psalm","chapter":122,"label":"Psalm 122"}]}]},{"day":58,"date":"2026-11-07","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hiob 31–38","chapters":[{"book":"Hiob","chapter":31,"label":"Hiob 31"},{"book":"Hiob","chapter":32,"label":"Hiob 32"},{"book":"Hiob","chapter":33,"label":"Hiob 33"},{"book":"Hiob","chapter":34,"label":"Hiob 34"},{"book":"Hiob","chapter":35,"label":"Hiob 35"},{"book":"Hiob","chapter":36,"label":"Hiob 36"},{"book":"Hiob","chapter":37,"label":"Hiob 37"},{"book":"Hiob","chapter":38,"label":"Hiob 38"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 123–124","chapters":[{"book":"Psalm","chapter":123,"label":"Psalm 123"},{"book":"Psalm","chapter":124,"label":"Psalm 124"}]}]},{"day":59,"date":"2026-11-08","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hiob 39–42; Hohelied 1–4","chapters":[{"book":"Hiob","chapter":39,"label":"Hiob 39"},{"book":"Hiob","chapter":40,"label":"Hiob 40"},{"book":"Hiob","chapter":41,"label":"Hiob 41"},{"book":"Hiob","chapter":42,"label":"Hiob 42"},{"book":"Hohelied","chapter":1,"label":"Hohelied 1"},{"book":"Hohelied","chapter":2,"label":"Hohelied 2"},{"book":"Hohelied","chapter":3,"label":"Hohelied 3"},{"book":"Hohelied","chapter":4,"label":"Hohelied 4"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 125–127","chapters":[{"book":"Psalm","chapter":125,"label":"Psalm 125"},{"book":"Psalm","chapter":126,"label":"Psalm 126"},{"book":"Psalm","chapter":127,"label":"Psalm 127"}]}]},{"day":60,"date":"2026-11-09","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hohelied 5–8; Jesaja 1–5","chapters":[{"book":"Hohelied","chapter":5,"label":"Hohelied 5"},{"book":"Hohelied","chapter":6,"label":"Hohelied 6"},{"book":"Hohelied","chapter":7,"label":"Hohelied 7"},{"book":"Hohelied","chapter":8,"label":"Hohelied 8"},{"book":"Jesaja","chapter":1,"label":"Jesaja 1"},{"book":"Jesaja","chapter":2,"label":"Jesaja 2"},{"book":"Jesaja","chapter":3,"label":"Jesaja 3"},{"book":"Jesaja","chapter":4,"label":"Jesaja 4"},{"book":"Jesaja","chapter":5,"label":"Jesaja 5"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 128–129","chapters":[{"book":"Psalm","chapter":128,"label":"Psalm 128"},{"book":"Psalm","chapter":129,"label":"Psalm 129"}]}]},{"day":61,"date":"2026-11-10","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 6–13","chapters":[{"book":"Jesaja","chapter":6,"label":"Jesaja 6"},{"book":"Jesaja","chapter":7,"label":"Jesaja 7"},{"book":"Jesaja","chapter":8,"label":"Jesaja 8"},{"book":"Jesaja","chapter":9,"label":"Jesaja 9"},{"book":"Jesaja","chapter":10,"label":"Jesaja 10"},{"book":"Jesaja","chapter":11,"label":"Jesaja 11"},{"book":"Jesaja","chapter":12,"label":"Jesaja 12"},{"book":"Jesaja","chapter":13,"label":"Jesaja 13"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 130–131","chapters":[{"book":"Psalm","chapter":130,"label":"Psalm 130"},{"book":"Psalm","chapter":131,"label":"Psalm 131"}]}]},{"day":62,"date":"2026-11-11","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 14–21","chapters":[{"book":"Jesaja","chapter":14,"label":"Jesaja 14"},{"book":"Jesaja","chapter":15,"label":"Jesaja 15"},{"book":"Jesaja","chapter":16,"label":"Jesaja 16"},{"book":"Jesaja","chapter":17,"label":"Jesaja 17"},{"book":"Jesaja","chapter":18,"label":"Jesaja 18"},{"book":"Jesaja","chapter":19,"label":"Jesaja 19"},{"book":"Jesaja","chapter":20,"label":"Jesaja 20"},{"book":"Jesaja","chapter":21,"label":"Jesaja 21"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 132–133","chapters":[{"book":"Psalm","chapter":132,"label":"Psalm 132"},{"book":"Psalm","chapter":133,"label":"Psalm 133"}]}]},{"day":63,"date":"2026-11-12","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 22–29","chapters":[{"book":"Jesaja","chapter":22,"label":"Jesaja 22"},{"book":"Jesaja","chapter":23,"label":"Jesaja 23"},{"book":"Jesaja","chapter":24,"label":"Jesaja 24"},{"book":"Jesaja","chapter":25,"label":"Jesaja 25"},{"book":"Jesaja","chapter":26,"label":"Jesaja 26"},{"book":"Jesaja","chapter":27,"label":"Jesaja 27"},{"book":"Jesaja","chapter":28,"label":"Jesaja 28"},{"book":"Jesaja","chapter":29,"label":"Jesaja 29"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 134–135","chapters":[{"book":"Psalm","chapter":134,"label":"Psalm 134"},{"book":"Psalm","chapter":135,"label":"Psalm 135"}]}]},{"day":64,"date":"2026-11-13","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 30–37","chapters":[{"book":"Jesaja","chapter":30,"label":"Jesaja 30"},{"book":"Jesaja","chapter":31,"label":"Jesaja 31"},{"book":"Jesaja","chapter":32,"label":"Jesaja 32"},{"book":"Jesaja","chapter":33,"label":"Jesaja 33"},{"book":"Jesaja","chapter":34,"label":"Jesaja 34"},{"book":"Jesaja","chapter":35,"label":"Jesaja 35"},{"book":"Jesaja","chapter":36,"label":"Jesaja 36"},{"book":"Jesaja","chapter":37,"label":"Jesaja 37"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 136–137","chapters":[{"book":"Psalm","chapter":136,"label":"Psalm 136"},{"book":"Psalm","chapter":137,"label":"Psalm 137"}]}]},{"day":65,"date":"2026-11-14","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 38–45","chapters":[{"book":"Jesaja","chapter":38,"label":"Jesaja 38"},{"book":"Jesaja","chapter":39,"label":"Jesaja 39"},{"book":"Jesaja","chapter":40,"label":"Jesaja 40"},{"book":"Jesaja","chapter":41,"label":"Jesaja 41"},{"book":"Jesaja","chapter":42,"label":"Jesaja 42"},{"book":"Jesaja","chapter":43,"label":"Jesaja 43"},{"book":"Jesaja","chapter":44,"label":"Jesaja 44"},{"book":"Jesaja","chapter":45,"label":"Jesaja 45"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 138–140","chapters":[{"book":"Psalm","chapter":138,"label":"Psalm 138"},{"book":"Psalm","chapter":139,"label":"Psalm 139"},{"book":"Psalm","chapter":140,"label":"Psalm 140"}]}]},{"day":66,"date":"2026-11-15","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 46–54","chapters":[{"book":"Jesaja","chapter":46,"label":"Jesaja 46"},{"book":"Jesaja","chapter":47,"label":"Jesaja 47"},{"book":"Jesaja","chapter":48,"label":"Jesaja 48"},{"book":"Jesaja","chapter":49,"label":"Jesaja 49"},{"book":"Jesaja","chapter":50,"label":"Jesaja 50"},{"book":"Jesaja","chapter":51,"label":"Jesaja 51"},{"book":"Jesaja","chapter":52,"label":"Jesaja 52"},{"book":"Jesaja","chapter":53,"label":"Jesaja 53"},{"book":"Jesaja","chapter":54,"label":"Jesaja 54"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 141–142","chapters":[{"book":"Psalm","chapter":141,"label":"Psalm 141"},{"book":"Psalm","chapter":142,"label":"Psalm 142"}]}]},{"day":67,"date":"2026-11-16","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 55–62","chapters":[{"book":"Jesaja","chapter":55,"label":"Jesaja 55"},{"book":"Jesaja","chapter":56,"label":"Jesaja 56"},{"book":"Jesaja","chapter":57,"label":"Jesaja 57"},{"book":"Jesaja","chapter":58,"label":"Jesaja 58"},{"book":"Jesaja","chapter":59,"label":"Jesaja 59"},{"book":"Jesaja","chapter":60,"label":"Jesaja 60"},{"book":"Jesaja","chapter":61,"label":"Jesaja 61"},{"book":"Jesaja","chapter":62,"label":"Jesaja 62"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 143–144","chapters":[{"book":"Psalm","chapter":143,"label":"Psalm 143"},{"book":"Psalm","chapter":144,"label":"Psalm 144"}]}]},{"day":68,"date":"2026-11-17","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jesaja 63–66; Jeremia 1–4","chapters":[{"book":"Jesaja","chapter":63,"label":"Jesaja 63"},{"book":"Jesaja","chapter":64,"label":"Jesaja 64"},{"book":"Jesaja","chapter":65,"label":"Jesaja 65"},{"book":"Jesaja","chapter":66,"label":"Jesaja 66"},{"book":"Jeremia","chapter":1,"label":"Jeremia 1"},{"book":"Jeremia","chapter":2,"label":"Jeremia 2"},{"book":"Jeremia","chapter":3,"label":"Jeremia 3"},{"book":"Jeremia","chapter":4,"label":"Jeremia 4"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 145–146","chapters":[{"book":"Psalm","chapter":145,"label":"Psalm 145"},{"book":"Psalm","chapter":146,"label":"Psalm 146"}]}]},{"day":69,"date":"2026-11-18","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 5–12","chapters":[{"book":"Jeremia","chapter":5,"label":"Jeremia 5"},{"book":"Jeremia","chapter":6,"label":"Jeremia 6"},{"book":"Jeremia","chapter":7,"label":"Jeremia 7"},{"book":"Jeremia","chapter":8,"label":"Jeremia 8"},{"book":"Jeremia","chapter":9,"label":"Jeremia 9"},{"book":"Jeremia","chapter":10,"label":"Jeremia 10"},{"book":"Jeremia","chapter":11,"label":"Jeremia 11"},{"book":"Jeremia","chapter":12,"label":"Jeremia 12"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 147–148","chapters":[{"book":"Psalm","chapter":147,"label":"Psalm 147"},{"book":"Psalm","chapter":148,"label":"Psalm 148"}]}]},{"day":70,"date":"2026-11-19","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 13–20","chapters":[{"book":"Jeremia","chapter":13,"label":"Jeremia 13"},{"book":"Jeremia","chapter":14,"label":"Jeremia 14"},{"book":"Jeremia","chapter":15,"label":"Jeremia 15"},{"book":"Jeremia","chapter":16,"label":"Jeremia 16"},{"book":"Jeremia","chapter":17,"label":"Jeremia 17"},{"book":"Jeremia","chapter":18,"label":"Jeremia 18"},{"book":"Jeremia","chapter":19,"label":"Jeremia 19"},{"book":"Jeremia","chapter":20,"label":"Jeremia 20"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Psalm 149–150","chapters":[{"book":"Psalm","chapter":149,"label":"Psalm 149"},{"book":"Psalm","chapter":150,"label":"Psalm 150"}]}]},{"day":71,"date":"2026-11-20","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 21–29","chapters":[{"book":"Jeremia","chapter":21,"label":"Jeremia 21"},{"book":"Jeremia","chapter":22,"label":"Jeremia 22"},{"book":"Jeremia","chapter":23,"label":"Jeremia 23"},{"book":"Jeremia","chapter":24,"label":"Jeremia 24"},{"book":"Jeremia","chapter":25,"label":"Jeremia 25"},{"book":"Jeremia","chapter":26,"label":"Jeremia 26"},{"book":"Jeremia","chapter":27,"label":"Jeremia 27"},{"book":"Jeremia","chapter":28,"label":"Jeremia 28"},{"book":"Jeremia","chapter":29,"label":"Jeremia 29"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 1–2","chapters":[{"book":"Sprüche","chapter":1,"label":"Sprüche 1"},{"book":"Sprüche","chapter":2,"label":"Sprüche 2"}]}]},{"day":72,"date":"2026-11-21","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 30–37","chapters":[{"book":"Jeremia","chapter":30,"label":"Jeremia 30"},{"book":"Jeremia","chapter":31,"label":"Jeremia 31"},{"book":"Jeremia","chapter":32,"label":"Jeremia 32"},{"book":"Jeremia","chapter":33,"label":"Jeremia 33"},{"book":"Jeremia","chapter":34,"label":"Jeremia 34"},{"book":"Jeremia","chapter":35,"label":"Jeremia 35"},{"book":"Jeremia","chapter":36,"label":"Jeremia 36"},{"book":"Jeremia","chapter":37,"label":"Jeremia 37"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 3–5","chapters":[{"book":"Sprüche","chapter":3,"label":"Sprüche 3"},{"book":"Sprüche","chapter":4,"label":"Sprüche 4"},{"book":"Sprüche","chapter":5,"label":"Sprüche 5"}]}]},{"day":73,"date":"2026-11-22","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 38–45","chapters":[{"book":"Jeremia","chapter":38,"label":"Jeremia 38"},{"book":"Jeremia","chapter":39,"label":"Jeremia 39"},{"book":"Jeremia","chapter":40,"label":"Jeremia 40"},{"book":"Jeremia","chapter":41,"label":"Jeremia 41"},{"book":"Jeremia","chapter":42,"label":"Jeremia 42"},{"book":"Jeremia","chapter":43,"label":"Jeremia 43"},{"book":"Jeremia","chapter":44,"label":"Jeremia 44"},{"book":"Jeremia","chapter":45,"label":"Jeremia 45"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 6–7","chapters":[{"book":"Sprüche","chapter":6,"label":"Sprüche 6"},{"book":"Sprüche","chapter":7,"label":"Sprüche 7"}]}]},{"day":74,"date":"2026-11-23","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Jeremia 46–52; Klagelieder 1","chapters":[{"book":"Jeremia","chapter":46,"label":"Jeremia 46"},{"book":"Jeremia","chapter":47,"label":"Jeremia 47"},{"book":"Jeremia","chapter":48,"label":"Jeremia 48"},{"book":"Jeremia","chapter":49,"label":"Jeremia 49"},{"book":"Jeremia","chapter":50,"label":"Jeremia 50"},{"book":"Jeremia","chapter":51,"label":"Jeremia 51"},{"book":"Jeremia","chapter":52,"label":"Jeremia 52"},{"book":"Klagelieder","chapter":1,"label":"Klagelieder 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 8–9","chapters":[{"book":"Sprüche","chapter":8,"label":"Sprüche 8"},{"book":"Sprüche","chapter":9,"label":"Sprüche 9"}]}]},{"day":75,"date":"2026-11-24","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Klagelieder 2–5; Hesekiel 1–4","chapters":[{"book":"Klagelieder","chapter":2,"label":"Klagelieder 2"},{"book":"Klagelieder","chapter":3,"label":"Klagelieder 3"},{"book":"Klagelieder","chapter":4,"label":"Klagelieder 4"},{"book":"Klagelieder","chapter":5,"label":"Klagelieder 5"},{"book":"Hesekiel","chapter":1,"label":"Hesekiel 1"},{"book":"Hesekiel","chapter":2,"label":"Hesekiel 2"},{"book":"Hesekiel","chapter":3,"label":"Hesekiel 3"},{"book":"Hesekiel","chapter":4,"label":"Hesekiel 4"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 10–11","chapters":[{"book":"Sprüche","chapter":10,"label":"Sprüche 10"},{"book":"Sprüche","chapter":11,"label":"Sprüche 11"}]}]},{"day":76,"date":"2026-11-25","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 5–12","chapters":[{"book":"Hesekiel","chapter":5,"label":"Hesekiel 5"},{"book":"Hesekiel","chapter":6,"label":"Hesekiel 6"},{"book":"Hesekiel","chapter":7,"label":"Hesekiel 7"},{"book":"Hesekiel","chapter":8,"label":"Hesekiel 8"},{"book":"Hesekiel","chapter":9,"label":"Hesekiel 9"},{"book":"Hesekiel","chapter":10,"label":"Hesekiel 10"},{"book":"Hesekiel","chapter":11,"label":"Hesekiel 11"},{"book":"Hesekiel","chapter":12,"label":"Hesekiel 12"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 12–13","chapters":[{"book":"Sprüche","chapter":12,"label":"Sprüche 12"},{"book":"Sprüche","chapter":13,"label":"Sprüche 13"}]}]},{"day":77,"date":"2026-11-26","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 13–21","chapters":[{"book":"Hesekiel","chapter":13,"label":"Hesekiel 13"},{"book":"Hesekiel","chapter":14,"label":"Hesekiel 14"},{"book":"Hesekiel","chapter":15,"label":"Hesekiel 15"},{"book":"Hesekiel","chapter":16,"label":"Hesekiel 16"},{"book":"Hesekiel","chapter":17,"label":"Hesekiel 17"},{"book":"Hesekiel","chapter":18,"label":"Hesekiel 18"},{"book":"Hesekiel","chapter":19,"label":"Hesekiel 19"},{"book":"Hesekiel","chapter":20,"label":"Hesekiel 20"},{"book":"Hesekiel","chapter":21,"label":"Hesekiel 21"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 14–15","chapters":[{"book":"Sprüche","chapter":14,"label":"Sprüche 14"},{"book":"Sprüche","chapter":15,"label":"Sprüche 15"}]}]},{"day":78,"date":"2026-11-27","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 22–29","chapters":[{"book":"Hesekiel","chapter":22,"label":"Hesekiel 22"},{"book":"Hesekiel","chapter":23,"label":"Hesekiel 23"},{"book":"Hesekiel","chapter":24,"label":"Hesekiel 24"},{"book":"Hesekiel","chapter":25,"label":"Hesekiel 25"},{"book":"Hesekiel","chapter":26,"label":"Hesekiel 26"},{"book":"Hesekiel","chapter":27,"label":"Hesekiel 27"},{"book":"Hesekiel","chapter":28,"label":"Hesekiel 28"},{"book":"Hesekiel","chapter":29,"label":"Hesekiel 29"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 16–17","chapters":[{"book":"Sprüche","chapter":16,"label":"Sprüche 16"},{"book":"Sprüche","chapter":17,"label":"Sprüche 17"}]}]},{"day":79,"date":"2026-11-28","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 30–37","chapters":[{"book":"Hesekiel","chapter":30,"label":"Hesekiel 30"},{"book":"Hesekiel","chapter":31,"label":"Hesekiel 31"},{"book":"Hesekiel","chapter":32,"label":"Hesekiel 32"},{"book":"Hesekiel","chapter":33,"label":"Hesekiel 33"},{"book":"Hesekiel","chapter":34,"label":"Hesekiel 34"},{"book":"Hesekiel","chapter":35,"label":"Hesekiel 35"},{"book":"Hesekiel","chapter":36,"label":"Hesekiel 36"},{"book":"Hesekiel","chapter":37,"label":"Hesekiel 37"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 18–20","chapters":[{"book":"Sprüche","chapter":18,"label":"Sprüche 18"},{"book":"Sprüche","chapter":19,"label":"Sprüche 19"},{"book":"Sprüche","chapter":20,"label":"Sprüche 20"}]}]},{"day":80,"date":"2026-11-29","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 38–45","chapters":[{"book":"Hesekiel","chapter":38,"label":"Hesekiel 38"},{"book":"Hesekiel","chapter":39,"label":"Hesekiel 39"},{"book":"Hesekiel","chapter":40,"label":"Hesekiel 40"},{"book":"Hesekiel","chapter":41,"label":"Hesekiel 41"},{"book":"Hesekiel","chapter":42,"label":"Hesekiel 42"},{"book":"Hesekiel","chapter":43,"label":"Hesekiel 43"},{"book":"Hesekiel","chapter":44,"label":"Hesekiel 44"},{"book":"Hesekiel","chapter":45,"label":"Hesekiel 45"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 21–22","chapters":[{"book":"Sprüche","chapter":21,"label":"Sprüche 21"},{"book":"Sprüche","chapter":22,"label":"Sprüche 22"}]}]},{"day":81,"date":"2026-11-30","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hesekiel 46–48; Daniel 1–5","chapters":[{"book":"Hesekiel","chapter":46,"label":"Hesekiel 46"},{"book":"Hesekiel","chapter":47,"label":"Hesekiel 47"},{"book":"Hesekiel","chapter":48,"label":"Hesekiel 48"},{"book":"Daniel","chapter":1,"label":"Daniel 1"},{"book":"Daniel","chapter":2,"label":"Daniel 2"},{"book":"Daniel","chapter":3,"label":"Daniel 3"},{"book":"Daniel","chapter":4,"label":"Daniel 4"},{"book":"Daniel","chapter":5,"label":"Daniel 5"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 23–24","chapters":[{"book":"Sprüche","chapter":23,"label":"Sprüche 23"},{"book":"Sprüche","chapter":24,"label":"Sprüche 24"}]}]},{"day":82,"date":"2026-12-01","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Daniel 6–12; Hosea 1","chapters":[{"book":"Daniel","chapter":6,"label":"Daniel 6"},{"book":"Daniel","chapter":7,"label":"Daniel 7"},{"book":"Daniel","chapter":8,"label":"Daniel 8"},{"book":"Daniel","chapter":9,"label":"Daniel 9"},{"book":"Daniel","chapter":10,"label":"Daniel 10"},{"book":"Daniel","chapter":11,"label":"Daniel 11"},{"book":"Daniel","chapter":12,"label":"Daniel 12"},{"book":"Hosea","chapter":1,"label":"Hosea 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 25–26","chapters":[{"book":"Sprüche","chapter":25,"label":"Sprüche 25"},{"book":"Sprüche","chapter":26,"label":"Sprüche 26"}]}]},{"day":83,"date":"2026-12-02","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hosea 2–10","chapters":[{"book":"Hosea","chapter":2,"label":"Hosea 2"},{"book":"Hosea","chapter":3,"label":"Hosea 3"},{"book":"Hosea","chapter":4,"label":"Hosea 4"},{"book":"Hosea","chapter":5,"label":"Hosea 5"},{"book":"Hosea","chapter":6,"label":"Hosea 6"},{"book":"Hosea","chapter":7,"label":"Hosea 7"},{"book":"Hosea","chapter":8,"label":"Hosea 8"},{"book":"Hosea","chapter":9,"label":"Hosea 9"},{"book":"Hosea","chapter":10,"label":"Hosea 10"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 27–28","chapters":[{"book":"Sprüche","chapter":27,"label":"Sprüche 27"},{"book":"Sprüche","chapter":28,"label":"Sprüche 28"}]}]},{"day":84,"date":"2026-12-03","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Hosea 11–14; Joel 1–4","chapters":[{"book":"Hosea","chapter":11,"label":"Hosea 11"},{"book":"Hosea","chapter":12,"label":"Hosea 12"},{"book":"Hosea","chapter":13,"label":"Hosea 13"},{"book":"Hosea","chapter":14,"label":"Hosea 14"},{"book":"Joel","chapter":1,"label":"Joel 1"},{"book":"Joel","chapter":2,"label":"Joel 2"},{"book":"Joel","chapter":3,"label":"Joel 3"},{"book":"Joel","chapter":4,"label":"Joel 4"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 29–30","chapters":[{"book":"Sprüche","chapter":29,"label":"Sprüche 29"},{"book":"Sprüche","chapter":30,"label":"Sprüche 30"}]}]},{"day":85,"date":"2026-12-04","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Amos 1–8","chapters":[{"book":"Amos","chapter":1,"label":"Amos 1"},{"book":"Amos","chapter":2,"label":"Amos 2"},{"book":"Amos","chapter":3,"label":"Amos 3"},{"book":"Amos","chapter":4,"label":"Amos 4"},{"book":"Amos","chapter":5,"label":"Amos 5"},{"book":"Amos","chapter":6,"label":"Amos 6"},{"book":"Amos","chapter":7,"label":"Amos 7"},{"book":"Amos","chapter":8,"label":"Amos 8"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Sprüche 31; Prediger 1","chapters":[{"book":"Sprüche","chapter":31,"label":"Sprüche 31"},{"book":"Prediger","chapter":1,"label":"Prediger 1"}]}]},{"day":86,"date":"2026-12-05","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Amos 9; Obadja 1; Jona 1–4; Micha 1–2","chapters":[{"book":"Amos","chapter":9,"label":"Amos 9"},{"book":"Obadja","chapter":1,"label":"Obadja 1"},{"book":"Jona","chapter":1,"label":"Jona 1"},{"book":"Jona","chapter":2,"label":"Jona 2"},{"book":"Jona","chapter":3,"label":"Jona 3"},{"book":"Jona","chapter":4,"label":"Jona 4"},{"book":"Micha","chapter":1,"label":"Micha 1"},{"book":"Micha","chapter":2,"label":"Micha 2"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Prediger 2–4","chapters":[{"book":"Prediger","chapter":2,"label":"Prediger 2"},{"book":"Prediger","chapter":3,"label":"Prediger 3"},{"book":"Prediger","chapter":4,"label":"Prediger 4"}]}]},{"day":87,"date":"2026-12-06","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Micha 3–7; Nahum 1–3","chapters":[{"book":"Micha","chapter":3,"label":"Micha 3"},{"book":"Micha","chapter":4,"label":"Micha 4"},{"book":"Micha","chapter":5,"label":"Micha 5"},{"book":"Micha","chapter":6,"label":"Micha 6"},{"book":"Micha","chapter":7,"label":"Micha 7"},{"book":"Nahum","chapter":1,"label":"Nahum 1"},{"book":"Nahum","chapter":2,"label":"Nahum 2"},{"book":"Nahum","chapter":3,"label":"Nahum 3"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Prediger 5–6","chapters":[{"book":"Prediger","chapter":5,"label":"Prediger 5"},{"book":"Prediger","chapter":6,"label":"Prediger 6"}]}]},{"day":88,"date":"2026-12-07","chapters":11,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Habakuk 1–3; Zefanja 1–3; Haggai 1–2; Sacharja 1","chapters":[{"book":"Habakuk","chapter":1,"label":"Habakuk 1"},{"book":"Habakuk","chapter":2,"label":"Habakuk 2"},{"book":"Habakuk","chapter":3,"label":"Habakuk 3"},{"book":"Zefanja","chapter":1,"label":"Zefanja 1"},{"book":"Zefanja","chapter":2,"label":"Zefanja 2"},{"book":"Zefanja","chapter":3,"label":"Zefanja 3"},{"book":"Haggai","chapter":1,"label":"Haggai 1"},{"book":"Haggai","chapter":2,"label":"Haggai 2"},{"book":"Sacharja","chapter":1,"label":"Sacharja 1"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Prediger 7–8","chapters":[{"book":"Prediger","chapter":7,"label":"Prediger 7"},{"book":"Prediger","chapter":8,"label":"Prediger 8"}]}]},{"day":89,"date":"2026-12-08","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Sacharja 2–9","chapters":[{"book":"Sacharja","chapter":2,"label":"Sacharja 2"},{"book":"Sacharja","chapter":3,"label":"Sacharja 3"},{"book":"Sacharja","chapter":4,"label":"Sacharja 4"},{"book":"Sacharja","chapter":5,"label":"Sacharja 5"},{"book":"Sacharja","chapter":6,"label":"Sacharja 6"},{"book":"Sacharja","chapter":7,"label":"Sacharja 7"},{"book":"Sacharja","chapter":8,"label":"Sacharja 8"},{"book":"Sacharja","chapter":9,"label":"Sacharja 9"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Prediger 9–10","chapters":[{"book":"Prediger","chapter":9,"label":"Prediger 9"},{"book":"Prediger","chapter":10,"label":"Prediger 10"}]}]},{"day":90,"date":"2026-12-09","chapters":10,"tracks":[{"id":"main","label":"Fortlaufend","summary":"Sacharja 10–14; Maleachi 1–3","chapters":[{"book":"Sacharja","chapter":10,"label":"Sacharja 10"},{"book":"Sacharja","chapter":11,"label":"Sacharja 11"},{"book":"Sacharja","chapter":12,"label":"Sacharja 12"},{"book":"Sacharja","chapter":13,"label":"Sacharja 13"},{"book":"Sacharja","chapter":14,"label":"Sacharja 14"},{"book":"Maleachi","chapter":1,"label":"Maleachi 1"},{"book":"Maleachi","chapter":2,"label":"Maleachi 2"},{"book":"Maleachi","chapter":3,"label":"Maleachi 3"}]},{"id":"wisdom","label":"Psalmen · Sprüche · Prediger","summary":"Prediger 11–12","chapters":[{"book":"Prediger","chapter":11,"label":"Prediger 11"},{"book":"Prediger","chapter":12,"label":"Prediger 12"}]}]}],"nt":[{"day":1,"date":"2026-09-11","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 1–3","chapters":[{"book":"Matthäus","chapter":1,"label":"Matthäus 1"},{"book":"Matthäus","chapter":2,"label":"Matthäus 2"},{"book":"Matthäus","chapter":3,"label":"Matthäus 3"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 1","chapters":[{"book":"Apostelgeschichte","chapter":1,"label":"Apostelgeschichte 1"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Römer 1–5","chapters":[{"book":"Römer","chapter":1,"label":"Römer 1"},{"book":"Römer","chapter":2,"label":"Römer 2"},{"book":"Römer","chapter":3,"label":"Römer 3"},{"book":"Römer","chapter":4,"label":"Römer 4"},{"book":"Römer","chapter":5,"label":"Römer 5"}]}]},{"day":2,"date":"2026-09-12","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 4–6","chapters":[{"book":"Matthäus","chapter":4,"label":"Matthäus 4"},{"book":"Matthäus","chapter":5,"label":"Matthäus 5"},{"book":"Matthäus","chapter":6,"label":"Matthäus 6"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 2","chapters":[{"book":"Apostelgeschichte","chapter":2,"label":"Apostelgeschichte 2"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Römer 6–9","chapters":[{"book":"Römer","chapter":6,"label":"Römer 6"},{"book":"Römer","chapter":7,"label":"Römer 7"},{"book":"Römer","chapter":8,"label":"Römer 8"},{"book":"Römer","chapter":9,"label":"Römer 9"}]}]},{"day":3,"date":"2026-09-13","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 7–9","chapters":[{"book":"Matthäus","chapter":7,"label":"Matthäus 7"},{"book":"Matthäus","chapter":8,"label":"Matthäus 8"},{"book":"Matthäus","chapter":9,"label":"Matthäus 9"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 3","chapters":[{"book":"Apostelgeschichte","chapter":3,"label":"Apostelgeschichte 3"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Römer 10–14","chapters":[{"book":"Römer","chapter":10,"label":"Römer 10"},{"book":"Römer","chapter":11,"label":"Römer 11"},{"book":"Römer","chapter":12,"label":"Römer 12"},{"book":"Römer","chapter":13,"label":"Römer 13"},{"book":"Römer","chapter":14,"label":"Römer 14"}]}]},{"day":4,"date":"2026-09-14","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 10–12","chapters":[{"book":"Matthäus","chapter":10,"label":"Matthäus 10"},{"book":"Matthäus","chapter":11,"label":"Matthäus 11"},{"book":"Matthäus","chapter":12,"label":"Matthäus 12"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 4","chapters":[{"book":"Apostelgeschichte","chapter":4,"label":"Apostelgeschichte 4"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Römer 15–16; 1. Korinther 1–2","chapters":[{"book":"Römer","chapter":15,"label":"Römer 15"},{"book":"Römer","chapter":16,"label":"Römer 16"},{"book":"1. Korinther","chapter":1,"label":"1. Korinther 1"},{"book":"1. Korinther","chapter":2,"label":"1. Korinther 2"}]}]},{"day":5,"date":"2026-09-15","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 13–15","chapters":[{"book":"Matthäus","chapter":13,"label":"Matthäus 13"},{"book":"Matthäus","chapter":14,"label":"Matthäus 14"},{"book":"Matthäus","chapter":15,"label":"Matthäus 15"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 5","chapters":[{"book":"Apostelgeschichte","chapter":5,"label":"Apostelgeschichte 5"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Korinther 3–7","chapters":[{"book":"1. Korinther","chapter":3,"label":"1. Korinther 3"},{"book":"1. Korinther","chapter":4,"label":"1. Korinther 4"},{"book":"1. Korinther","chapter":5,"label":"1. Korinther 5"},{"book":"1. Korinther","chapter":6,"label":"1. Korinther 6"},{"book":"1. Korinther","chapter":7,"label":"1. Korinther 7"}]}]},{"day":6,"date":"2026-09-16","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 16–18","chapters":[{"book":"Matthäus","chapter":16,"label":"Matthäus 16"},{"book":"Matthäus","chapter":17,"label":"Matthäus 17"},{"book":"Matthäus","chapter":18,"label":"Matthäus 18"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 6","chapters":[{"book":"Apostelgeschichte","chapter":6,"label":"Apostelgeschichte 6"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Korinther 8–12","chapters":[{"book":"1. Korinther","chapter":8,"label":"1. Korinther 8"},{"book":"1. Korinther","chapter":9,"label":"1. Korinther 9"},{"book":"1. Korinther","chapter":10,"label":"1. Korinther 10"},{"book":"1. Korinther","chapter":11,"label":"1. Korinther 11"},{"book":"1. Korinther","chapter":12,"label":"1. Korinther 12"}]}]},{"day":7,"date":"2026-09-17","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 19–21","chapters":[{"book":"Matthäus","chapter":19,"label":"Matthäus 19"},{"book":"Matthäus","chapter":20,"label":"Matthäus 20"},{"book":"Matthäus","chapter":21,"label":"Matthäus 21"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 7","chapters":[{"book":"Apostelgeschichte","chapter":7,"label":"Apostelgeschichte 7"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Korinther 13–16; 2. Korinther 1","chapters":[{"book":"1. Korinther","chapter":13,"label":"1. Korinther 13"},{"book":"1. Korinther","chapter":14,"label":"1. Korinther 14"},{"book":"1. Korinther","chapter":15,"label":"1. Korinther 15"},{"book":"1. Korinther","chapter":16,"label":"1. Korinther 16"},{"book":"2. Korinther","chapter":1,"label":"2. Korinther 1"}]}]},{"day":8,"date":"2026-09-18","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 22–23","chapters":[{"book":"Matthäus","chapter":22,"label":"Matthäus 22"},{"book":"Matthäus","chapter":23,"label":"Matthäus 23"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 8","chapters":[{"book":"Apostelgeschichte","chapter":8,"label":"Apostelgeschichte 8"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Korinther 2–6","chapters":[{"book":"2. Korinther","chapter":2,"label":"2. Korinther 2"},{"book":"2. Korinther","chapter":3,"label":"2. Korinther 3"},{"book":"2. Korinther","chapter":4,"label":"2. Korinther 4"},{"book":"2. Korinther","chapter":5,"label":"2. Korinther 5"},{"book":"2. Korinther","chapter":6,"label":"2. Korinther 6"}]}]},{"day":9,"date":"2026-09-19","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 24–26","chapters":[{"book":"Matthäus","chapter":24,"label":"Matthäus 24"},{"book":"Matthäus","chapter":25,"label":"Matthäus 25"},{"book":"Matthäus","chapter":26,"label":"Matthäus 26"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 9","chapters":[{"book":"Apostelgeschichte","chapter":9,"label":"Apostelgeschichte 9"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Korinther 7–11","chapters":[{"book":"2. Korinther","chapter":7,"label":"2. Korinther 7"},{"book":"2. Korinther","chapter":8,"label":"2. Korinther 8"},{"book":"2. Korinther","chapter":9,"label":"2. Korinther 9"},{"book":"2. Korinther","chapter":10,"label":"2. Korinther 10"},{"book":"2. Korinther","chapter":11,"label":"2. Korinther 11"}]}]},{"day":10,"date":"2026-09-20","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Matthäus 27–28; Markus 1","chapters":[{"book":"Matthäus","chapter":27,"label":"Matthäus 27"},{"book":"Matthäus","chapter":28,"label":"Matthäus 28"},{"book":"Markus","chapter":1,"label":"Markus 1"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 10","chapters":[{"book":"Apostelgeschichte","chapter":10,"label":"Apostelgeschichte 10"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Korinther 12–13; Galater 1–3","chapters":[{"book":"2. Korinther","chapter":12,"label":"2. Korinther 12"},{"book":"2. Korinther","chapter":13,"label":"2. Korinther 13"},{"book":"Galater","chapter":1,"label":"Galater 1"},{"book":"Galater","chapter":2,"label":"Galater 2"},{"book":"Galater","chapter":3,"label":"Galater 3"}]}]},{"day":11,"date":"2026-09-21","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Markus 2–4","chapters":[{"book":"Markus","chapter":2,"label":"Markus 2"},{"book":"Markus","chapter":3,"label":"Markus 3"},{"book":"Markus","chapter":4,"label":"Markus 4"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 11","chapters":[{"book":"Apostelgeschichte","chapter":11,"label":"Apostelgeschichte 11"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Galater 4–6; Epheser 1–2","chapters":[{"book":"Galater","chapter":4,"label":"Galater 4"},{"book":"Galater","chapter":5,"label":"Galater 5"},{"book":"Galater","chapter":6,"label":"Galater 6"},{"book":"Epheser","chapter":1,"label":"Epheser 1"},{"book":"Epheser","chapter":2,"label":"Epheser 2"}]}]},{"day":12,"date":"2026-09-22","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Markus 5–7","chapters":[{"book":"Markus","chapter":5,"label":"Markus 5"},{"book":"Markus","chapter":6,"label":"Markus 6"},{"book":"Markus","chapter":7,"label":"Markus 7"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 12","chapters":[{"book":"Apostelgeschichte","chapter":12,"label":"Apostelgeschichte 12"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Epheser 3–6","chapters":[{"book":"Epheser","chapter":3,"label":"Epheser 3"},{"book":"Epheser","chapter":4,"label":"Epheser 4"},{"book":"Epheser","chapter":5,"label":"Epheser 5"},{"book":"Epheser","chapter":6,"label":"Epheser 6"}]}]},{"day":13,"date":"2026-09-23","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Markus 8–10","chapters":[{"book":"Markus","chapter":8,"label":"Markus 8"},{"book":"Markus","chapter":9,"label":"Markus 9"},{"book":"Markus","chapter":10,"label":"Markus 10"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 13","chapters":[{"book":"Apostelgeschichte","chapter":13,"label":"Apostelgeschichte 13"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Philipper 1–4; Kolosser 1","chapters":[{"book":"Philipper","chapter":1,"label":"Philipper 1"},{"book":"Philipper","chapter":2,"label":"Philipper 2"},{"book":"Philipper","chapter":3,"label":"Philipper 3"},{"book":"Philipper","chapter":4,"label":"Philipper 4"},{"book":"Kolosser","chapter":1,"label":"Kolosser 1"}]}]},{"day":14,"date":"2026-09-24","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Markus 11–13","chapters":[{"book":"Markus","chapter":11,"label":"Markus 11"},{"book":"Markus","chapter":12,"label":"Markus 12"},{"book":"Markus","chapter":13,"label":"Markus 13"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 14","chapters":[{"book":"Apostelgeschichte","chapter":14,"label":"Apostelgeschichte 14"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Kolosser 2–4; 1. Thessalonicher 1–2","chapters":[{"book":"Kolosser","chapter":2,"label":"Kolosser 2"},{"book":"Kolosser","chapter":3,"label":"Kolosser 3"},{"book":"Kolosser","chapter":4,"label":"Kolosser 4"},{"book":"1. Thessalonicher","chapter":1,"label":"1. Thessalonicher 1"},{"book":"1. Thessalonicher","chapter":2,"label":"1. Thessalonicher 2"}]}]},{"day":15,"date":"2026-09-25","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Markus 14–16","chapters":[{"book":"Markus","chapter":14,"label":"Markus 14"},{"book":"Markus","chapter":15,"label":"Markus 15"},{"book":"Markus","chapter":16,"label":"Markus 16"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 15","chapters":[{"book":"Apostelgeschichte","chapter":15,"label":"Apostelgeschichte 15"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Thessalonicher 3–5; 2. Thessalonicher 1–2","chapters":[{"book":"1. Thessalonicher","chapter":3,"label":"1. Thessalonicher 3"},{"book":"1. Thessalonicher","chapter":4,"label":"1. Thessalonicher 4"},{"book":"1. Thessalonicher","chapter":5,"label":"1. Thessalonicher 5"},{"book":"2. Thessalonicher","chapter":1,"label":"2. Thessalonicher 1"},{"book":"2. Thessalonicher","chapter":2,"label":"2. Thessalonicher 2"}]}]},{"day":16,"date":"2026-09-26","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 1–2","chapters":[{"book":"Lukas","chapter":1,"label":"Lukas 1"},{"book":"Lukas","chapter":2,"label":"Lukas 2"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 16","chapters":[{"book":"Apostelgeschichte","chapter":16,"label":"Apostelgeschichte 16"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Thessalonicher 3; 1. Timotheus 1–4","chapters":[{"book":"2. Thessalonicher","chapter":3,"label":"2. Thessalonicher 3"},{"book":"1. Timotheus","chapter":1,"label":"1. Timotheus 1"},{"book":"1. Timotheus","chapter":2,"label":"1. Timotheus 2"},{"book":"1. Timotheus","chapter":3,"label":"1. Timotheus 3"},{"book":"1. Timotheus","chapter":4,"label":"1. Timotheus 4"}]}]},{"day":17,"date":"2026-09-27","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 3–5","chapters":[{"book":"Lukas","chapter":3,"label":"Lukas 3"},{"book":"Lukas","chapter":4,"label":"Lukas 4"},{"book":"Lukas","chapter":5,"label":"Lukas 5"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 17","chapters":[{"book":"Apostelgeschichte","chapter":17,"label":"Apostelgeschichte 17"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Timotheus 5–6; 2. Timotheus 1–3","chapters":[{"book":"1. Timotheus","chapter":5,"label":"1. Timotheus 5"},{"book":"1. Timotheus","chapter":6,"label":"1. Timotheus 6"},{"book":"2. Timotheus","chapter":1,"label":"2. Timotheus 1"},{"book":"2. Timotheus","chapter":2,"label":"2. Timotheus 2"},{"book":"2. Timotheus","chapter":3,"label":"2. Timotheus 3"}]}]},{"day":18,"date":"2026-09-28","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 6–8","chapters":[{"book":"Lukas","chapter":6,"label":"Lukas 6"},{"book":"Lukas","chapter":7,"label":"Lukas 7"},{"book":"Lukas","chapter":8,"label":"Lukas 8"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 18","chapters":[{"book":"Apostelgeschichte","chapter":18,"label":"Apostelgeschichte 18"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Timotheus 4; Titus 1–3; Philemon 1","chapters":[{"book":"2. Timotheus","chapter":4,"label":"2. Timotheus 4"},{"book":"Titus","chapter":1,"label":"Titus 1"},{"book":"Titus","chapter":2,"label":"Titus 2"},{"book":"Titus","chapter":3,"label":"Titus 3"},{"book":"Philemon","chapter":1,"label":"Philemon 1"}]}]},{"day":19,"date":"2026-09-29","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 9–11","chapters":[{"book":"Lukas","chapter":9,"label":"Lukas 9"},{"book":"Lukas","chapter":10,"label":"Lukas 10"},{"book":"Lukas","chapter":11,"label":"Lukas 11"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 19","chapters":[{"book":"Apostelgeschichte","chapter":19,"label":"Apostelgeschichte 19"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Hebräer 1–5","chapters":[{"book":"Hebräer","chapter":1,"label":"Hebräer 1"},{"book":"Hebräer","chapter":2,"label":"Hebräer 2"},{"book":"Hebräer","chapter":3,"label":"Hebräer 3"},{"book":"Hebräer","chapter":4,"label":"Hebräer 4"},{"book":"Hebräer","chapter":5,"label":"Hebräer 5"}]}]},{"day":20,"date":"2026-09-30","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 12–14","chapters":[{"book":"Lukas","chapter":12,"label":"Lukas 12"},{"book":"Lukas","chapter":13,"label":"Lukas 13"},{"book":"Lukas","chapter":14,"label":"Lukas 14"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 20","chapters":[{"book":"Apostelgeschichte","chapter":20,"label":"Apostelgeschichte 20"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Hebräer 6–9","chapters":[{"book":"Hebräer","chapter":6,"label":"Hebräer 6"},{"book":"Hebräer","chapter":7,"label":"Hebräer 7"},{"book":"Hebräer","chapter":8,"label":"Hebräer 8"},{"book":"Hebräer","chapter":9,"label":"Hebräer 9"}]}]},{"day":21,"date":"2026-10-01","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 15–17","chapters":[{"book":"Lukas","chapter":15,"label":"Lukas 15"},{"book":"Lukas","chapter":16,"label":"Lukas 16"},{"book":"Lukas","chapter":17,"label":"Lukas 17"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 21","chapters":[{"book":"Apostelgeschichte","chapter":21,"label":"Apostelgeschichte 21"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Hebräer 10–13; Jakobus 1","chapters":[{"book":"Hebräer","chapter":10,"label":"Hebräer 10"},{"book":"Hebräer","chapter":11,"label":"Hebräer 11"},{"book":"Hebräer","chapter":12,"label":"Hebräer 12"},{"book":"Hebräer","chapter":13,"label":"Hebräer 13"},{"book":"Jakobus","chapter":1,"label":"Jakobus 1"}]}]},{"day":22,"date":"2026-10-02","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 18–20","chapters":[{"book":"Lukas","chapter":18,"label":"Lukas 18"},{"book":"Lukas","chapter":19,"label":"Lukas 19"},{"book":"Lukas","chapter":20,"label":"Lukas 20"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 22","chapters":[{"book":"Apostelgeschichte","chapter":22,"label":"Apostelgeschichte 22"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Jakobus 2–5; 1. Petrus 1","chapters":[{"book":"Jakobus","chapter":2,"label":"Jakobus 2"},{"book":"Jakobus","chapter":3,"label":"Jakobus 3"},{"book":"Jakobus","chapter":4,"label":"Jakobus 4"},{"book":"Jakobus","chapter":5,"label":"Jakobus 5"},{"book":"1. Petrus","chapter":1,"label":"1. Petrus 1"}]}]},{"day":23,"date":"2026-10-03","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 21–23","chapters":[{"book":"Lukas","chapter":21,"label":"Lukas 21"},{"book":"Lukas","chapter":22,"label":"Lukas 22"},{"book":"Lukas","chapter":23,"label":"Lukas 23"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 23","chapters":[{"book":"Apostelgeschichte","chapter":23,"label":"Apostelgeschichte 23"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Petrus 2–5; 2. Petrus 1","chapters":[{"book":"1. Petrus","chapter":2,"label":"1. Petrus 2"},{"book":"1. Petrus","chapter":3,"label":"1. Petrus 3"},{"book":"1. Petrus","chapter":4,"label":"1. Petrus 4"},{"book":"1. Petrus","chapter":5,"label":"1. Petrus 5"},{"book":"2. Petrus","chapter":1,"label":"2. Petrus 1"}]}]},{"day":24,"date":"2026-10-04","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Lukas 24; Johannes 1","chapters":[{"book":"Lukas","chapter":24,"label":"Lukas 24"},{"book":"Johannes","chapter":1,"label":"Johannes 1"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 24","chapters":[{"book":"Apostelgeschichte","chapter":24,"label":"Apostelgeschichte 24"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"2. Petrus 2–3; 1. Johannes 1–3","chapters":[{"book":"2. Petrus","chapter":2,"label":"2. Petrus 2"},{"book":"2. Petrus","chapter":3,"label":"2. Petrus 3"},{"book":"1. Johannes","chapter":1,"label":"1. Johannes 1"},{"book":"1. Johannes","chapter":2,"label":"1. Johannes 2"},{"book":"1. Johannes","chapter":3,"label":"1. Johannes 3"}]}]},{"day":25,"date":"2026-10-05","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 2–4","chapters":[{"book":"Johannes","chapter":2,"label":"Johannes 2"},{"book":"Johannes","chapter":3,"label":"Johannes 3"},{"book":"Johannes","chapter":4,"label":"Johannes 4"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 25","chapters":[{"book":"Apostelgeschichte","chapter":25,"label":"Apostelgeschichte 25"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"1. Johannes 4–5; 2. Johannes 1; 3. Johannes 1; Judas 1","chapters":[{"book":"1. Johannes","chapter":4,"label":"1. Johannes 4"},{"book":"1. Johannes","chapter":5,"label":"1. Johannes 5"},{"book":"2. Johannes","chapter":1,"label":"2. Johannes 1"},{"book":"3. Johannes","chapter":1,"label":"3. Johannes 1"},{"book":"Judas","chapter":1,"label":"Judas 1"}]}]},{"day":26,"date":"2026-10-06","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 5–7","chapters":[{"book":"Johannes","chapter":5,"label":"Johannes 5"},{"book":"Johannes","chapter":6,"label":"Johannes 6"},{"book":"Johannes","chapter":7,"label":"Johannes 7"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 26","chapters":[{"book":"Apostelgeschichte","chapter":26,"label":"Apostelgeschichte 26"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Offenbarung 1–4","chapters":[{"book":"Offenbarung","chapter":1,"label":"Offenbarung 1"},{"book":"Offenbarung","chapter":2,"label":"Offenbarung 2"},{"book":"Offenbarung","chapter":3,"label":"Offenbarung 3"},{"book":"Offenbarung","chapter":4,"label":"Offenbarung 4"}]}]},{"day":27,"date":"2026-10-07","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 8–10","chapters":[{"book":"Johannes","chapter":8,"label":"Johannes 8"},{"book":"Johannes","chapter":9,"label":"Johannes 9"},{"book":"Johannes","chapter":10,"label":"Johannes 10"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 27","chapters":[{"book":"Apostelgeschichte","chapter":27,"label":"Apostelgeschichte 27"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Offenbarung 5–8","chapters":[{"book":"Offenbarung","chapter":5,"label":"Offenbarung 5"},{"book":"Offenbarung","chapter":6,"label":"Offenbarung 6"},{"book":"Offenbarung","chapter":7,"label":"Offenbarung 7"},{"book":"Offenbarung","chapter":8,"label":"Offenbarung 8"}]}]},{"day":28,"date":"2026-10-08","chapters":8,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 11–13","chapters":[{"book":"Johannes","chapter":11,"label":"Johannes 11"},{"book":"Johannes","chapter":12,"label":"Johannes 12"},{"book":"Johannes","chapter":13,"label":"Johannes 13"}]},{"id":"acts","label":"Apostelgeschichte","summary":"Apostelgeschichte 28","chapters":[{"book":"Apostelgeschichte","chapter":28,"label":"Apostelgeschichte 28"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Offenbarung 9–12","chapters":[{"book":"Offenbarung","chapter":9,"label":"Offenbarung 9"},{"book":"Offenbarung","chapter":10,"label":"Offenbarung 10"},{"book":"Offenbarung","chapter":11,"label":"Offenbarung 11"},{"book":"Offenbarung","chapter":12,"label":"Offenbarung 12"}]}]},{"day":29,"date":"2026-10-09","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 14–17","chapters":[{"book":"Johannes","chapter":14,"label":"Johannes 14"},{"book":"Johannes","chapter":15,"label":"Johannes 15"},{"book":"Johannes","chapter":16,"label":"Johannes 16"},{"book":"Johannes","chapter":17,"label":"Johannes 17"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Offenbarung 13–17","chapters":[{"book":"Offenbarung","chapter":13,"label":"Offenbarung 13"},{"book":"Offenbarung","chapter":14,"label":"Offenbarung 14"},{"book":"Offenbarung","chapter":15,"label":"Offenbarung 15"},{"book":"Offenbarung","chapter":16,"label":"Offenbarung 16"},{"book":"Offenbarung","chapter":17,"label":"Offenbarung 17"}]}]},{"day":30,"date":"2026-10-10","chapters":9,"tracks":[{"id":"gospel","label":"Evangelium","summary":"Johannes 18–21","chapters":[{"book":"Johannes","chapter":18,"label":"Johannes 18"},{"book":"Johannes","chapter":19,"label":"Johannes 19"},{"book":"Johannes","chapter":20,"label":"Johannes 20"},{"book":"Johannes","chapter":21,"label":"Johannes 21"}]},{"id":"letters","label":"Römer–Offenbarung","summary":"Offenbarung 18–22","chapters":[{"book":"Offenbarung","chapter":18,"label":"Offenbarung 18"},{"book":"Offenbarung","chapter":19,"label":"Offenbarung 19"},{"book":"Offenbarung","chapter":20,"label":"Offenbarung 20"},{"book":"Offenbarung","chapter":21,"label":"Offenbarung 21"},{"book":"Offenbarung","chapter":22,"label":"Offenbarung 22"}]}]}]};
+const STORE_KEY = "bibelleseplan_progress_v1";
+let state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+let view = "today";
+let todayViewDate = todayIso();
+
+const NT_CYCLES = 3;
+const NT_DAYS_PER_CYCLE = 30;
+let selectedDay = { at: null, nt: null };
+let selectedNtCycle = null;
+let shouldScrollToSelected = false;
+const openBibleBooks = new Set();
+
+function addDaysIso(iso, delta) {
+  const [y,m,d] = iso.split("-").map(Number);
+  const dt = new Date(y,m-1,d);
+  dt.setDate(dt.getDate()+delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+}
+function minTodayDate() { return PLAN.at[0].date; }
+function maxTodayDate() { return PLAN.at[PLAN.at.length-1].date; }
+function clampTodayDate(iso) {
+  if (iso < minTodayDate()) return minTodayDate();
+  if (iso > maxTodayDate()) return maxTodayDate();
+  return iso;
+}
+function moveToday(delta) {
+  todayViewDate = clampTodayDate(addDaysIso(todayViewDate, delta));
+  render();
+}
+
+function ntCycleForDate(iso=todayIso()) {
+  const start = new Date(2026,8,11);
+  const [y,m,d] = iso.split("-").map(Number);
+  const cur = new Date(y,m-1,d);
+  const diff = Math.floor((cur-start)/86400000);
+  if(diff < 0) return {cycle:1, day:1};
+  const capped = Math.min(diff, NT_CYCLES*NT_DAYS_PER_CYCLE-1);
+  return {cycle:Math.floor(capped/NT_DAYS_PER_CYCLE)+1, day:(capped%NT_DAYS_PER_CYCLE)+1};
+}
+function ntDateFor(cycle,day) {
+  const dt = new Date(2026,8,11);
+  dt.setDate(dt.getDate()+(cycle-1)*NT_DAYS_PER_CYCLE+(day-1));
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+}
+
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function legacyKey(plan,day,track) { return `${plan}:${day}:${track}`; }
+function chapterKey(plan,day,track,index,cycle=1) {
+  return plan==="nt" ? `ch:nt:c${cycle}:${day}:${track}:${index}` : `ch:${plan}:${day}:${track}:${index}`;
+}
+
+function migrateProgressV6() {
+  if(state._cycleMigrationV6) return;
+
+  // Migrate old per-chapter NT progress into Durchlauf 1.
+  for(const item of PLAN.nt) {
+    for(const track of item.tracks) {
+      track.chapters.forEach((_,i)=>{
+        const old=`ch:nt:${item.day}:${track.id}:${i}`;
+        const neu=chapterKey("nt",item.day,track.id,i,1);
+        if(state[old] && !state[neu]) state[neu]=true;
+        delete state[old];
+      });
+      const oldBlock=legacyKey("nt",item.day,track.id);
+      if(state[oldBlock]) {
+        track.chapters.forEach((_,i)=>state[chapterKey("nt",item.day,track.id,i,1)]=true);
+        delete state[oldBlock];
+      }
+    }
+  }
+
+  // Keep AT progress and migrate only very old block-level marks if any remain.
+  for(const item of PLAN.at) {
+    for(const track of item.tracks) {
+      const oldBlock=legacyKey("at",item.day,track.id);
+      if(state[oldBlock]) {
+        track.chapters.forEach((_,i)=>state[chapterKey("at",item.day,track.id,i,1)]=true);
+        delete state[oldBlock];
+      }
+    }
+  }
+  state._chapterMigrationV2=true;
+  state._cycleMigrationV6=true;
+  save();
+}
+migrateProgressV6();
+
+function isChapterChecked(plan,day,track,index,cycle=1) { return !!state[chapterKey(plan,day,track,index,cycle)]; }
+function setChapter(plan,day,track,index,val,cycle=1) {
+  const k=chapterKey(plan,day,track,index,cycle);
+  if(val) state[k]=true; else delete state[k];
+  save();
+}
+function trackDone(plan,item,track,cycle=1) { return track.chapters.every((_,i)=>isChapterChecked(plan,item.day,track.id,i,cycle)); }
+function dayDone(plan,item,cycle=1) { return item.tracks.every(track=>trackDone(plan,item,track,cycle)); }
+function setWholeTrack(plan,item,track,val,cycle=1) { track.chapters.forEach((_,i)=>setChapter(plan,item.day,track.id,i,val,cycle)); }
+function setWholeDay(plan,item,val,cycle=1) { item.tracks.forEach(track=>setWholeTrack(plan,item,track,val,cycle)); }
+function ntCycleDone(cycle) { return PLAN.nt.every(item=>dayDone("nt",item,cycle)); }
+function ntCompletedCycles() { return [1,2,3].filter(ntCycleDone).length; }
+function firstIncompleteNtCycle() { return [1,2,3].find(c=>!ntCycleDone(c)) || 3; }
+
+function progress(plan,cycle=1) {
+  const items=PLAN[plan];
+  let doneCh=0,totalCh=0,doneDays=0;
+  items.forEach(item=>{
+    let all=true;
+    item.tracks.forEach(track=>{
+      track.chapters.forEach((_,i)=>{
+        totalCh++;
+        const checked=isChapterChecked(plan,item.day,track.id,i,cycle);
+        if(checked) doneCh++; else all=false;
+      });
+    });
+    if(all) doneDays++;
+  });
+  return {doneCh,totalCh,doneDays,totalDays:items.length,pct:Math.round(doneCh/totalCh*100),cycle};
+}
+
+function planDayForDate(plan,iso=todayIso()) {
+  if(plan==="nt") {
+    const info=ntCycleForDate(iso);
+    selectedNtCycle=info.cycle;
+    return info.day;
+  }
+  const items=PLAN[plan];
+  const exact=items.find(x=>x.date===iso);
+  if(exact) return exact.day;
+  if(iso<items[0].date) return 1;
+  return items[items.length-1].day;
+}
+function ensureSelectedDay(plan) {
+  if(!selectedDay[plan]) selectedDay[plan]=planDayForDate(plan);
+  return selectedDay[plan];
+}
+
+function relativeStatus(dateIso,done=false) {
+  const t=todayIso();
+  if(dateIso===t) return {text:"Heute",cls:"today"};
+  const tomorrow=addDaysIso(t,1);
+  if(dateIso===tomorrow) return {text:"Morgen",cls:"tomorrow"};
+  if(dateIso<t && !done) return {text:"Überfällig",cls:"overdue"};
+  return null;
+}
+
+function scrollToSelected(plan,behavior="smooth") {
+  const day=ensureSelectedDay(plan);
+  const cycle=plan==="nt" ? (selectedNtCycle || firstIncompleteNtCycle()) : 1;
+  const card=document.getElementById(`daycard-${plan}-${cycle}-${day}`);
+  const body=document.getElementById(`${plan}-${cycle}-${day}`);
+  if(body) {
+    body.classList.remove("hidden");
+    const head=card?.querySelector("[data-toggle]");
+    if(head) head.setAttribute("aria-expanded","true");
+  }
+  if(card) {
+    card.scrollIntoView({behavior,block:"start"});
+    card.classList.add("flash");
+    setTimeout(()=>card.classList.remove("flash"),900);
+  }
+}
+
+function fmtDate(iso) {
+  const [y,m,d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("de-DE", {weekday:"short", day:"2-digit", month:"2-digit"})
+    .format(new Date(y,m-1,d));
+}
+function todayIso() {
+  const d = new Date();
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+
+function esc(s) {
+  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"})[c]);
+}
+
+const BIBLE_BOOK_ORDER = {
+  at: [
+    ["1. Mose","1. Mose"],["2. Mose","2. Mose"],["3. Mose","3. Mose"],["4. Mose","4. Mose"],["5. Mose","5. Mose"],
+    ["Josua","Josua"],["Richter","Richter"],["Rut","Rut"],["1. Samuel","1. Samuel"],["2. Samuel","2. Samuel"],
+    ["1. Könige","1. Könige"],["2. Könige","2. Könige"],["1. Chronik","1. Chronik"],["2. Chronik","2. Chronik"],
+    ["Esra","Esra"],["Nehemia","Nehemia"],["Ester","Ester"],["Hiob","Hiob"],["Psalm","Psalmen"],
+    ["Sprüche","Sprüche"],["Prediger","Prediger"],["Hohelied","Hohelied"],["Jesaja","Jesaja"],["Jeremia","Jeremia"],
+    ["Klagelieder","Klagelieder"],["Hesekiel","Hesekiel"],["Daniel","Daniel"],["Hosea","Hosea"],["Joel","Joel"],
+    ["Amos","Amos"],["Obadja","Obadja"],["Jona","Jona"],["Micha","Micha"],["Nahum","Nahum"],
+    ["Habakuk","Habakuk"],["Zefanja","Zefanja"],["Haggai","Haggai"],["Sacharja","Sacharja"],["Maleachi","Maleachi"]
+  ],
+  nt: [
+    ["Matthäus","Matthäus"],["Markus","Markus"],["Lukas","Lukas"],["Johannes","Johannes"],
+    ["Apostelgeschichte","Apostelgeschichte"],["Römer","Römer"],["1. Korinther","1. Korinther"],
+    ["2. Korinther","2. Korinther"],["Galater","Galater"],["Epheser","Epheser"],["Philipper","Philipper"],
+    ["Kolosser","Kolosser"],["1. Thessalonicher","1. Thessalonicher"],["2. Thessalonicher","2. Thessalonicher"],
+    ["1. Timotheus","1. Timotheus"],["2. Timotheus","2. Timotheus"],["Titus","Titus"],["Philemon","Philemon"],
+    ["Hebräer","Hebräer"],["Jakobus","Jakobus"],["1. Petrus","1. Petrus"],["2. Petrus","2. Petrus"],
+    ["1. Johannes","1. Johannes"],["2. Johannes","2. Johannes"],["3. Johannes","3. Johannes"],
+    ["Judas","Judas"],["Offenbarung","Offenbarung"]
+  ]
+};
+
+function buildBibleIndex() {
+  const idx={at:{},nt:{}};
+  for(const plan of ["at","nt"]) {
+    PLAN[plan].forEach(item=>{
+      item.tracks.forEach(track=>{
+        track.chapters.forEach((ch,index)=>{
+          if(!idx[plan][ch.book]) idx[plan][ch.book]={};
+          idx[plan][ch.book][ch.chapter]={day:item.day,track:track.id,index};
+        });
+      });
+    });
+  }
+  return idx;
+}
+const BIBLE_INDEX=buildBibleIndex();
+
+function bibleLocation(testament,book,chapter) {
+  return BIBLE_INDEX[testament]?.[book]?.[chapter] || null;
+}
+function bibleChapterChecked(testament,book,chapter,cycle=1) {
+  const loc=bibleLocation(testament,book,chapter);
+  return loc ? isChapterChecked(testament,loc.day,loc.track,loc.index,cycle) : false;
+}
+function setBibleChapter(testament,book,chapter,val,cycle=1) {
+  const loc=bibleLocation(testament,book,chapter);
+  if(!loc) return;
+  setChapter(testament,loc.day,loc.track,loc.index,val,cycle);
+}
+function bookChapterNumbers(testament,book) {
+  return Object.keys(BIBLE_INDEX[testament]?.[book] || {}).map(Number).sort((a,b)=>a-b);
+}
+function bookStats(testament,book,cycle=1) {
+  const chapters=bookChapterNumbers(testament,book);
+  return {
+    done:chapters.filter(ch=>bibleChapterChecked(testament,book,ch,cycle)).length,
+    total:chapters.length
+  };
+}
+function bibleMasterStats() {
+  let atDone=0,atTotal=0;
+  BIBLE_BOOK_ORDER.at.forEach(([book])=>{
+    const s=bookStats("at",book,1); atDone+=s.done; atTotal+=s.total;
+  });
+  const nt=[1,2,3].map(cycle=>{
+    let done=0,total=0;
+    BIBLE_BOOK_ORDER.nt.forEach(([book])=>{
+      const s=bookStats("nt",book,cycle); done+=s.done; total+=s.total;
+    });
+    return {done,total};
+  });
+  const totalDone=atDone+nt.reduce((sum,x)=>sum+x.done,0);
+  const total=atTotal+nt.reduce((sum,x)=>sum+x.total,0);
+  return {atDone,atTotal,nt,totalDone,total,pct:Math.round(totalDone/total*100)};
+}
+function bibleBookKey(testament,book) { return `${testament}:${book}`; }
+
+function renderAtBook(book,label) {
+  const key=bibleBookKey("at",book);
+  const open=openBibleBooks.has(key);
+  const s=bookStats("at",book,1);
+  const chapters=bookChapterNumbers("at",book);
+  return `
+    <section class="book-card">
+      <button class="book-head" data-bible-book="${esc(key)}" aria-expanded="${open}">
+        <div>
+          <div class="book-name">${esc(label)}</div>
+          <div class="book-meta">${s.done} / ${s.total} Kapitel gelesen</div>
+        </div>
+        <div class="book-arrow">${open?"⌃":"⌄"}</div>
+      </button>
+      <div class="book-body ${open?"":"hidden"}">
+        <div class="bible-chapter-grid">
+          ${chapters.map(ch=>{
+            const checked=bibleChapterChecked("at",book,ch,1);
+            return `<label class="bible-chapter ${checked?"checked":""}">
+              <input type="checkbox" data-bible-check="at" data-book="${esc(book)}" data-chapter="${ch}" data-cycle="1" ${checked?"checked":""}>
+              <span class="num">${ch}</span>
+            </label>`;
+          }).join("")}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderNtBook(book,label) {
+  const key=bibleBookKey("nt",book);
+  const open=openBibleBooks.has(key);
+  const chapters=bookChapterNumbers("nt",book);
+  const stats=[1,2,3].map(c=>bookStats("nt",book,c));
+  return `
+    <section class="book-card">
+      <button class="book-head" data-bible-book="${esc(key)}" aria-expanded="${open}">
+        <div>
+          <div class="book-name">${esc(label)}</div>
+          <div class="book-meta">D1 ${stats[0].done}/${stats[0].total} · D2 ${stats[1].done}/${stats[1].total} · D3 ${stats[2].done}/${stats[2].total}</div>
+        </div>
+        <div class="book-arrow">${open?"⌃":"⌄"}</div>
+      </button>
+      <div class="book-body ${open?"":"hidden"}">
+        <div class="nt-master-head"><span>Kap.</span><span>D1</span><span>D2</span><span>D3</span></div>
+        ${chapters.map(ch=>`
+          <div class="nt-master-row">
+            <div class="nt-master-ch">${ch}</div>
+            ${[1,2,3].map(c=>{
+              const checked=bibleChapterChecked("nt",book,ch,c);
+              return `<label class="nt-master-check ${checked?"checked":""}" aria-label="${esc(label)} ${ch}, Durchlauf ${c}">
+                <input type="checkbox" data-bible-check="nt" data-book="${esc(book)}" data-chapter="${ch}" data-cycle="${c}" ${checked?"checked":""}>
+              </label>`;
+            }).join("")}
+          </div>`).join("")}
+      </div>
+    </section>`;
+}
+
+function renderBible() {
+  const s=bibleMasterStats();
+  return `
+    <section class="bible-overall">
+      <h2>Gesamtübersicht</h2>
+      <div class="big-total">${s.totalDone} / ${s.total}</div>
+      <div class="sub">von 1.709 Kapitel-Lesungen · ${s.pct} %</div>
+      <div class="progress"><div style="width:${s.pct}%"></div></div>
+      <div class="bible-stat-grid">
+        <div class="bible-stat"><strong>${s.atDone} / ${s.atTotal}</strong><span>AT · 1 Durchlauf</span></div>
+        <div class="bible-stat"><strong>${s.nt[0].done} / ${s.nt[0].total}</strong><span>NT · Durchlauf 1</span></div>
+        <div class="bible-stat"><strong>${s.nt[1].done} / ${s.nt[1].total}</strong><span>NT · Durchlauf 2</span></div>
+        <div class="bible-stat"><strong>${s.nt[2].done} / ${s.nt[2].total}</strong><span>NT · Durchlauf 3</span></div>
+      </div>
+    </section>
+
+    <div class="testament-title">Altes Testament</div>
+    ${BIBLE_BOOK_ORDER.at.map(([book,label])=>renderAtBook(book,label)).join("")}
+
+    <div class="testament-title">Neues Testament</div>
+    ${BIBLE_BOOK_ORDER.nt.map(([book,label])=>renderNtBook(book,label)).join("")}
+  `;
+}
+
+function trackHtml(plan,item,track,cycle=1) {
+  return `
+    <section class="track">
+      <div class="track-head">
+        <div>
+          <div class="track-label">${esc(track.label)}</div>
+          <div class="track-summary">${esc(track.summary)}</div>
+        </div>
+        <div class="track-actions">
+          <button class="mini" data-track-all="${plan}:${item.day}:${track.id}:${cycle}">Alle ✓</button>
+          <button class="mini" data-track-clear="${plan}:${item.day}:${track.id}:${cycle}">Alle aus</button>
+        </div>
+      </div>
+      <div class="chapter-grid">
+        ${track.chapters.map((ch,i)=>`
+          <label class="chapter ${isChapterChecked(plan,item.day,track.id,i,cycle)?"checked":""}">
+            <input type="checkbox" data-plan="${plan}" data-day="${item.day}" data-track="${track.id}" data-index="${i}" data-cycle="${cycle}" ${isChapterChecked(plan,item.day,track.id,i,cycle)?"checked":""}>
+            <span>${esc(ch.label)}</span>
+          </label>`).join("")}
+      </div>
+    </section>`;
+}
+
+function dayCard(plan,item,open=false,cycle=1,displayDate=null) {
+  const dateIso=displayDate || item.date;
+  const done=dayDone(plan,item,cycle);
+  const id=`${plan}-${cycle}-${item.day}`;
+  const status=relativeStatus(dateIso,done);
+  return `
+    <section class="day" id="daycard-${plan}-${cycle}-${item.day}" data-day-card="${item.day}">
+      <button class="day-head" data-toggle="${id}" data-plan-day="${plan}:${item.day}:${cycle}" aria-expanded="${open}">
+        <div>
+          <div class="date">Tag ${item.day} · ${fmtDate(dateIso)} ${status?`<span class="day-status ${status.cls}">${status.text}</span>`:""}</div>
+          <div class="meta">${item.chapters} Kapitel${plan==="nt"?` · Durchlauf ${cycle}/3`:""}</div>
+        </div>
+        <span class="badge ${done?"done":""}">${done?"✓ erledigt":"offen"}</span>
+      </button>
+      <div class="day-body ${open?"":"hidden"}" id="${id}">
+        ${item.tracks.map(track=>trackHtml(plan,item,track,cycle)).join("")}
+        <div class="actions">
+          <button class="small-btn primary" data-complete="${plan}:${item.day}:${cycle}">Ganzen Tag abhaken</button>
+          <button class="small-btn" data-uncheck="${plan}:${item.day}:${cycle}">Tag zurücksetzen</button>
+        </div>
+      </div>
+    </section>`;
+}
+
+function summaryCard(plan,title,cycle=1) {
+  const p=progress(plan,cycle);
+  return `
+    <section class="summary">
+      <div class="summary-grid">
+        <div class="metric"><strong>${p.pct} %</strong><span>${title}${plan==="nt"?` · Durchlauf ${cycle}/3`:""}</span></div>
+        <div class="metric"><strong>${p.doneCh} / ${p.totalCh}</strong><span>Kapitel gelesen</span></div>
+      </div>
+      <div class="progress"><div style="width:${p.pct}%"></div></div>
+      <div class="note" style="margin-top:8px">${p.doneDays} von ${p.totalDays} Tagen vollständig</div>
+    </section>`;
+}
+
+function ntCyclePanel(currentCycle) {
+  const completed=ntCompletedCycles();
+  return `
+    <section class="cycle-panel">
+      <div class="cycle-top"><div class="cycle-title">NT-Gesamtziel: 3 Durchläufe</div><div class="cycle-count">${completed} / 3 abgeschlossen</div></div>
+      <div class="progress"><div style="width:${Math.round(completed/3*100)}%"></div></div>
+      <div class="cycle-list">
+        ${[1,2,3].map(c=>`<div class="cycle-pill ${ntCycleDone(c)?"done":""} ${c===currentCycle?"current":""}">${ntCycleDone(c)?"✓ ":""}Durchlauf ${c}</div>`).join("")}
+      </div>
+      ${completed===3?`<div class="cycle-complete-note">✓ Du hast das Neue Testament dreimal vollständig gelesen.</div>`:""}
+    </section>`;
+}
+
+function renderToday() {
+  const iso=clampTodayDate(todayViewDate);
+  const actual=todayIso();
+  const at=PLAN.at.find(x=>x.date===iso);
+  const ntInfo=ntCycleForDate(iso);
+  const nt=PLAN.nt.find(x=>x.day===ntInfo.day);
+
+  let label="Ausgewählter Tag";
+  if(iso===actual) label="Heute";
+  else if(iso===addDaysIso(actual,1)) label="Morgen";
+  else if(iso===addDaysIso(actual,-1)) label="Gestern";
+
+  let html=`
+    <div class="today-swipe" id="todaySwipe">
+      <div class="today-nav">
+        <button data-today-prev aria-label="Vorheriger Tag" ${iso<=minTodayDate()?"disabled":""}>‹</button>
+        <div class="today-nav-center"><strong>${label}</strong><span>${fmtDate(iso)}</span></div>
+        <button data-today-next aria-label="Nächster Tag" ${iso>=maxTodayDate()?"disabled":""}>›</button>
+      </div>
+      ${iso!==actual?`<button class="today-reset" data-today-reset>Zurück zu heute</button>`:""}
+      <section class="hero"><b>Lesung für diesen Tag</b><div class="sub">Mit Pfeilen oder Wischen zwischen den Tagen wechseln.</div></section>`;
+
+  if(at) html+=`<div class="section-title">Altes Testament</div>${dayCard("at",at,true,1,iso)}`;
+  if(nt) {
+    html+=`<div class="section-title">Neues Testament · Durchlauf ${ntInfo.cycle}/3</div>`;
+    html+=ntCyclePanel(ntInfo.cycle);
+    html+=dayCard("nt",nt,true,ntInfo.cycle,iso);
+  }
+  html+=`<div class="section-title">Fortschritt</div>${summaryCard("at","AT 90 Tage",1)}${summaryCard("nt","NT 30 Tage",ntInfo.cycle)}</div>`;
+  return html;
+}
+
+function dayNavigator(plan) {
+  const items=PLAN[plan];
+  const selected=ensureSelectedDay(plan);
+  if(plan==="nt") {
+    const cycle=selectedNtCycle || firstIncompleteNtCycle();
+    return `
+      <div class="day-nav" aria-label="Tagesnavigation">
+        <button data-prev-day="nt" aria-label="Vorheriger Tag" ${(selected===1 && cycle===1)?"disabled":""}>‹</button>
+        <select data-day-select="nt" aria-label="Tag auswählen">
+          ${items.map(x=>`<option value="${x.day}" ${x.day===selected?"selected":""}>Tag ${x.day} · ${fmtDate(ntDateFor(cycle,x.day))}</option>`).join("")}
+        </select>
+        <button data-next-day="nt" aria-label="Nächster Tag" ${(selected===30 && cycle===3)?"disabled":""}>›</button>
+        <select data-cycle-select="nt" aria-label="Durchlauf auswählen" style="grid-column:1 / -1">
+          ${[1,2,3].map(c=>`<option value="${c}" ${c===cycle?"selected":""}>Durchlauf ${c}${ntCycleDone(c)?" ✓ abgeschlossen":""}</option>`).join("")}
+        </select>
+        <button class="today-jump" data-jump-today="nt">Zum aktuellen NT-Tag springen</button>
+      </div>`;
+  }
+  return `
+    <div class="day-nav" aria-label="Tagesnavigation">
+      <button data-prev-day="${plan}" aria-label="Vorheriger Tag" ${selected<=1?"disabled":""}>‹</button>
+      <select data-day-select="${plan}" aria-label="Tag auswählen">
+        ${items.map(x=>`<option value="${x.day}" ${x.day===selected?"selected":""}>Tag ${x.day} · ${fmtDate(x.date)}</option>`).join("")}
+      </select>
+      <button data-next-day="${plan}" aria-label="Nächster Tag" ${selected>=items.length?"disabled":""}>›</button>
+      <button class="today-jump" data-jump-today="${plan}">Zum heutigen Tag springen</button>
+    </div>`;
+}
+
+function renderPlan(plan,title) {
+  const selected=ensureSelectedDay(plan);
+  if(plan==="nt") {
+    const cycle=selectedNtCycle || firstIncompleteNtCycle();
+    return `${ntCyclePanel(cycle)}${summaryCard("nt",title,cycle)}${dayNavigator("nt")}<div class="section-title">${title} · Durchlauf ${cycle}/3</div>` +
+      PLAN.nt.map(item=>dayCard("nt",item,item.day===selected,cycle,ntDateFor(cycle,item.day))).join("");
+  }
+  return `${summaryCard(plan,title,1)}${dayNavigator(plan)}<div class="section-title">${title}</div>` +
+    PLAN[plan].map(item=>dayCard(plan,item,item.day===selected,1,item.date)).join("");
+}
+
+function render() {
+  document.getElementById("content").innerHTML =
+    view==="today" ? renderToday() :
+    view==="at" ? renderPlan("at","AT in 90 Tagen") :
+    view==="nt" ? renderPlan("nt","NT in 30 Tagen") :
+    renderBible();
+  bindDynamic();
+  if (shouldScrollToSelected && (view==="at" || view==="nt")) {
+    const plan=view;
+    shouldScrollToSelected=false;
+    setTimeout(()=>scrollToSelected(plan,"smooth"), 30);
+  }
+}
+
+function findTrack(plan,day,trackId) {
+  const item=PLAN[plan].find(x=>x.day===Number(day));
+  return [item,item.tracks.find(t=>t.id===trackId)];
+}
+
+function findTrack(plan,day,trackId) {
+  const item=PLAN[plan].find(x=>x.day===Number(day));
+  return [item,item.tracks.find(t=>t.id===trackId)];
+}
+
+function maybeAdvanceNt(cycle) {
+  if(cycle<3 && ntCycleDone(cycle)) {
+    selectedNtCycle=cycle+1;
+    selectedDay.nt=1;
+    return true;
+  }
+  return false;
+}
+
+function bindDynamic() {
+  document.querySelectorAll("[data-toggle]").forEach(btn=>btn.addEventListener("click",()=>{
+    const el=document.getElementById(btn.dataset.toggle);
+    const open=!el.classList.contains("hidden");
+    el.classList.toggle("hidden",open);
+    btn.setAttribute("aria-expanded",String(!open));
+    if(btn.dataset.planDay) {
+      const [plan,day,cycleRaw]=btn.dataset.planDay.split(":");
+      selectedDay[plan]=Number(day);
+      if(plan==="nt") selectedNtCycle=Number(cycleRaw||1);
+      const sel=document.querySelector(`[data-day-select="${plan}"]`);
+      if(sel) sel.value=day;
+    }
+  }));
+
+  document.querySelectorAll('input[type="checkbox"][data-index]').forEach(cb=>cb.addEventListener("change",()=>{
+    const plan=cb.dataset.plan, day=Number(cb.dataset.day), cycle=Number(cb.dataset.cycle||1);
+    selectedDay[plan]=day;
+    if(plan==="nt") selectedNtCycle=cycle;
+    setChapter(plan,day,cb.dataset.track,Number(cb.dataset.index),cb.checked,cycle);
+    const advanced=plan==="nt" ? maybeAdvanceNt(cycle) : false;
+    shouldScrollToSelected=!advanced;
+    render();
+  }));
+
+  document.querySelectorAll("[data-track-all]").forEach(btn=>btn.addEventListener("click",()=>{
+    const [plan,day,trackId,cycleRaw]=btn.dataset.trackAll.split(":");
+    const cycle=Number(cycleRaw||1);
+    selectedDay[plan]=Number(day); if(plan==="nt") selectedNtCycle=cycle;
+    const [item,track]=findTrack(plan,day,trackId);
+    setWholeTrack(plan,item,track,true,cycle);
+    const advanced=plan==="nt" ? maybeAdvanceNt(cycle) : false;
+    shouldScrollToSelected=!advanced; render();
+  }));
+  document.querySelectorAll("[data-track-clear]").forEach(btn=>btn.addEventListener("click",()=>{
+    const [plan,day,trackId,cycleRaw]=btn.dataset.trackClear.split(":");
+    const cycle=Number(cycleRaw||1);
+    selectedDay[plan]=Number(day); if(plan==="nt") selectedNtCycle=cycle;
+    const [item,track]=findTrack(plan,day,trackId);
+    setWholeTrack(plan,item,track,false,cycle);
+    shouldScrollToSelected=true; render();
+  }));
+
+  document.querySelectorAll("[data-complete]").forEach(btn=>btn.addEventListener("click",()=>{
+    const [plan,day,cycleRaw]=btn.dataset.complete.split(":");
+    const cycle=Number(cycleRaw||1);
+    selectedDay[plan]=Number(day); if(plan==="nt") selectedNtCycle=cycle;
+    const item=PLAN[plan].find(x=>x.day===Number(day));
+    setWholeDay(plan,item,true,cycle);
+    const advanced=plan==="nt" ? maybeAdvanceNt(cycle) : false;
+    shouldScrollToSelected=!advanced; render();
+  }));
+  document.querySelectorAll("[data-uncheck]").forEach(btn=>btn.addEventListener("click",()=>{
+    const [plan,day,cycleRaw]=btn.dataset.uncheck.split(":");
+    const cycle=Number(cycleRaw||1);
+    selectedDay[plan]=Number(day); if(plan==="nt") selectedNtCycle=cycle;
+    const item=PLAN[plan].find(x=>x.day===Number(day));
+    setWholeDay(plan,item,false,cycle);
+    shouldScrollToSelected=true; render();
+  }));
+
+  document.querySelectorAll("[data-day-select]").forEach(sel=>sel.addEventListener("change",()=>{
+    const plan=sel.dataset.daySelect;
+    selectedDay[plan]=Number(sel.value);
+    shouldScrollToSelected=true; render();
+  }));
+  document.querySelectorAll("[data-cycle-select]").forEach(sel=>sel.addEventListener("change",()=>{
+    selectedNtCycle=Number(sel.value);
+    if(!selectedDay.nt) selectedDay.nt=1;
+    shouldScrollToSelected=true; render();
+  }));
+  document.querySelectorAll("[data-prev-day]").forEach(btn=>btn.addEventListener("click",()=>{
+    const plan=btn.dataset.prevDay;
+    if(plan==="nt") {
+      const cycle=selectedNtCycle||firstIncompleteNtCycle();
+      const day=ensureSelectedDay("nt");
+      if(day===1 && cycle>1) { selectedNtCycle=cycle-1; selectedDay.nt=30; }
+      else selectedDay.nt=Math.max(1,day-1);
+    } else selectedDay[plan]=Math.max(1,ensureSelectedDay(plan)-1);
+    shouldScrollToSelected=true; render();
+  }));
+  document.querySelectorAll("[data-next-day]").forEach(btn=>btn.addEventListener("click",()=>{
+    const plan=btn.dataset.nextDay;
+    if(plan==="nt") {
+      const cycle=selectedNtCycle||firstIncompleteNtCycle();
+      const day=ensureSelectedDay("nt");
+      if(day===30 && cycle<3) { selectedNtCycle=cycle+1; selectedDay.nt=1; }
+      else selectedDay.nt=Math.min(30,day+1);
+    } else selectedDay[plan]=Math.min(PLAN[plan].length,ensureSelectedDay(plan)+1);
+    shouldScrollToSelected=true; render();
+  }));
+  document.querySelectorAll("[data-jump-today]").forEach(btn=>btn.addEventListener("click",()=>{
+    const plan=btn.dataset.jumpToday;
+    selectedDay[plan]=planDayForDate(plan);
+    shouldScrollToSelected=true; render();
+  }));
+
+  document.querySelectorAll("[data-bible-book]").forEach(btn=>btn.addEventListener("click",()=>{
+    const key=btn.dataset.bibleBook;
+    if(openBibleBooks.has(key)) openBibleBooks.delete(key);
+    else openBibleBooks.add(key);
+    render();
+  }));
+
+  document.querySelectorAll("[data-bible-check]").forEach(cb=>cb.addEventListener("change",()=>{
+    const testament=cb.dataset.bibleCheck;
+    const book=cb.dataset.book;
+    const chapter=Number(cb.dataset.chapter);
+    const cycle=Number(cb.dataset.cycle || 1);
+    setBibleChapter(testament,book,chapter,cb.checked,cycle);
+    render();
+  }));
+
+  const todayPrev=document.querySelector("[data-today-prev]");
+  const todayNext=document.querySelector("[data-today-next]");
+  const todayReset=document.querySelector("[data-today-reset]");
+  if(todayPrev) todayPrev.addEventListener("click",()=>moveToday(-1));
+  if(todayNext) todayNext.addEventListener("click",()=>moveToday(1));
+  if(todayReset) todayReset.addEventListener("click",()=>{ todayViewDate=todayIso(); render(); });
+
+  const swipe=document.getElementById("todaySwipe");
+  if(swipe) {
+    let sx=null,sy=null;
+    swipe.addEventListener("touchstart",e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
+    swipe.addEventListener("touchend",e=>{
+      if(sx===null) return;
+      const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+      sx=null; sy=null;
+      if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.25) dx<0?moveToday(1):moveToday(-1);
+    },{passive:true});
+  }
+}
+
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+  view=btn.dataset.view;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+  if(view==="today") todayViewDate=todayIso();
+  if(view==="at") {
+    ensureSelectedDay("at");
+    shouldScrollToSelected=true;
+  }
+  if(view==="nt") {
+    const first=firstIncompleteNtCycle();
+    if(selectedNtCycle===null || ntCycleDone(selectedNtCycle)) selectedNtCycle=first;
+    if(!selectedDay.nt || (selectedDay.nt===30 && selectedNtCycle===first && first>1)) selectedDay.nt=(first===ntCycleForDate().cycle?ntCycleForDate().day:1);
+    shouldScrollToSelected=true;
+  }
+  render();
+}));
+
+const dlg=document.getElementById("settingsDialog");
+document.getElementById("settingsBtn").addEventListener("click",()=>dlg.showModal());
+document.getElementById("closeSettings").addEventListener("click",()=>dlg.close());
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  if(confirm("Wirklich den gesamten Fortschritt löschen?")) {
+    localStorage.removeItem(STORE_KEY); state={}; dlg.close(); render();
+  }
+});
+
+let offlineReady = false;
+
+function updateOfflineStatus() {
+  const el=document.getElementById("offlineStatus");
+  if(!el) return;
+
+  if(!navigator.onLine) {
+    el.textContent = "Offline · Fortschritt wird gespeichert";
+    el.className = "offline-badge offline";
+    return;
+  }
+
+  if(offlineReady) {
+    el.textContent = "Offline verfügbar ✓";
+    el.className = "offline-badge ready";
+  } else {
+    el.textContent = "Online · Offline wird vorbereitet…";
+    el.className = "offline-badge preparing";
+  }
+}
+
+window.addEventListener("online", updateOfflineStatus);
+window.addEventListener("offline", updateOfflineStatus);
+
+async function setupOfflineMode() {
+  updateOfflineStatus();
+
+  if(!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) {
+    const el=document.getElementById("offlineStatus");
+    if(el) {
+      el.textContent="Offline-Modus benötigt die veröffentlichte Website";
+      el.className="offline-badge preparing";
+    }
+    return;
+  }
+
+  try {
+    const reg=await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+
+    // Ask the active worker to verify the complete offline cache.
+    const worker=reg.active || reg.waiting || reg.installing;
+    if(worker) worker.postMessage({type:"VERIFY_OFFLINE_CACHE"});
+
+    // If no message arrives, a ready worker still means the core shell is installed.
+    setTimeout(()=>{
+      if(!offlineReady && navigator.serviceWorker.controller) {
+        offlineReady=true;
+        updateOfflineStatus();
+      }
+    }, 1200);
+  } catch(err) {
+    const el=document.getElementById("offlineStatus");
+    if(el) {
+      el.textContent="Offline-Vorbereitung fehlgeschlagen";
+      el.className="offline-badge preparing";
+    }
+  }
+}
+
+navigator.serviceWorker?.addEventListener("message", event=>{
+  if(event.data?.type==="OFFLINE_READY") {
+    offlineReady=true;
+    updateOfflineStatus();
+  }
+});
+
+render();
+setupOfflineMode();
+</script>
+</body>
+</html>
