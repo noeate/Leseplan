@@ -1,9 +1,10 @@
-MEIN BIBELLESEPLAN – VERSION 12
+MEIN BIBELLESEPLAN – VERSION 13
 
 Neu:
 - Josua 1,8 steht oben im Reiter "Heute".
-- Die Flächen sind entrahmt: Tage, Bücher, Fortschritt und Durchläufe
-  stehen untereinander, getrennt durch feine Linien statt Kästen.
+- Tage, Bücher, Fortschritt, Durchläufe und die Tagesauswahl stehen
+  wieder auf eigenen Flächen, leicht vom Hintergrund abgehoben,
+  mit feinem Rahmen und kleiner Rundung, ohne Schatten.
 - Abgehaktes ist deutlicher zu sehen: kräftigeres Grün, gefüllter Punkt
   mit Ring, grüne Kapitelbeschriftung. Ein erledigter Tag trägt ein
   gefülltes grünes Zeichen, eine fertige Spur und ein fertiges Buch

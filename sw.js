@@ -1,4 +1,4 @@
-const CACHE = "bibelplan-v12-vers-flaechen";
+const CACHE = "bibelplan-v13-flaechen";
 const CORE = [
   "./",
   "./index.html",
