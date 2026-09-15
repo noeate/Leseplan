@@ -1,31 +1,22 @@
-MEIN BIBELLESEPLAN – VERSION 10
+MEIN BIBELLESEPLAN – VERSION 11
 
-Kapitelzahlen aller 66 Bücher wurden überprüft.
-
-Korrigiert für die deutsche/Schlachter-2000-Kapiteleinteilung:
-- Joel: 4 Kapitel
-- Maleachi: 3 Kapitel
-
-Dadurch wurde die AT-Hauptspur ab Joel neu fortlaufend zugeordnet.
-Die Gesamtmenge bleibt unverändert:
-- AT = 929 Kapitel
-- NT = 260 Kapitel pro Durchlauf
-- Gesamtziel = 1.709 Kapitel-Lesungen
+Neu in dieser Fassung:
+- Erscheinungsbild an Gebetstimer und Tagebuch angeglichen
+  (dunkler Nachtton, Serifenschrift für Überschriften, ruhige Linien
+  statt Karten mit Schatten, Messing als Akzent, Oliv für Erledigtes).
+- Geräte-Abgleich über den eigenen Cloudflare-Dienst.
+  Unter "Einstellungen" Adresse und Kennwort eintragen, dann "Verbinden".
+  Ein abgehaktes Kapitel bleibt abgehakt, auch wenn es nur auf einem
+  Gerät steht – die Häkchen beider Geräte werden vereinigt.
 
 Unverändert:
-- Startdatum 11.09.2026
-- Tag 4 = 14.09.2026
-- AT 90 Tage
-- NT 3 × 30 Tage
-- Bibel-Tab mit allen 66 Büchern
-- Offline-Modus
-- Tagesnavigation
-- lokale Fortschrittsspeicherung
+- Startdatum 11.09.2026, AT 90 Tage, NT 3 x 30 Tage
+- Kapitelzahlen aller 66 Bücher (Joel 4, Maleachi 3)
+- AT 929 Kapitel, NT 260 je Durchlauf, Gesamtziel 1.709 Lesungen
+- Bibel-Tab mit allen 66 Büchern, Offline-Modus, Tagesnavigation
+- Der bisherige Fortschritt bleibt erhalten.
 
-Hinweis:
-Fortschritt in den frühen Tagen bleibt unverändert. Die Korrektur betrifft die
-fortlaufende AT-Zuordnung erst im Bereich Joel bis Maleachi.
-
-Netlify:
-ZIP als neuen Deploy in dieselbe bestehende Site hochladen.
-Danach einmal online öffnen, bis „Offline verfügbar ✓“ erscheint.
+GitHub Pages:
+Alle Dateien ins Repository laden, gleichnamige werden überschrieben.
+Danach die Seite einmal mit Strg+F5 neu laden, damit die neue Fassung
+den zwischengespeicherten Stand ablöst.
